@@ -1,0 +1,172 @@
+#usage "en: <b>An ULP to align the selected objects in a particular manner</b>"
+            "<p>"
+            "An ULP to align the selected objects to be aligned to a straight line either horizontally or vertically."
+			"It also can order the selected object to have equal gaps vertically or horizontally."
+            "</p>"
+            "<p>"
+            "The following section should be added to the .eaglerc, and the text command should be set to visible in both the schematic and layout editor:"
+            "</p>"
+            "<i>"
+            "Sch.MenuText.01 = \"[align.png] Align selected objects { [format-justify-top.png] Align to top: Run align_objects.ulp vtop; | [format-justify-bot.png] Align to bottom: Run align_objects.ulp vbot; | [format-justify-left.png] Align left: Run align_objects.ulp hleft; | [format-justify-right.png] Align right : Run align_objects.ulp hright;}\""
+			"<br>"
+			"Brd.MenuText.01 = \"[align.png] Align selected objects { [format-justify-top.png] Align to top: Run align_objects.ulp vtop; | [format-justify-center_v.png] Align center vertically: Run align_objects.ulp vcenter; | [format-justify-bot.png] Align to bottom: Run align_objects.ulp vbot; | [format-justify-left.png] Align left: Run align_objects.ulp hleft; | [format-justify-center.png] Align center horizontally: Run align_objects.ulp hcenter; | [format-justify-right.png] Align right : Run align_objects.ulp hright;}\""
+			"</i>"
+			"<p>The latest version can be obtained from the <a href=https://github.com/martonmiklos/ulps_for_eagle>GitHub</a></p>"
+            "<p><author>Author: <a href=mailto:martonmiklosqdev@gmail_dot_com>Miklos Marton </author></a><p>"
+
+enum {
+	Horizontal_Left,
+	Horizontal_Center,
+	Horizontal_Right,
+	
+	Horizontal_Equal_Gaps,
+	
+	Vertical_Top,
+	Vertical_Center,
+	Vertical_Bottom
+};
+
+int alignMode = Horizontal_Left;
+
+UL_ELEMENT elements[];
+UL_INSTANCE instances[];
+
+real minX = REAL_MAX, minY = REAL_MAX;
+real maxX = REAL_MIN, maxY = REAL_MIN;
+int selectedItemsCount = 0;
+
+string retCommand = "";
+
+if (argv[1] == "hleft") 
+	alignMode = Horizontal_Left;
+
+if (argv[1] == "hcenter") 
+	alignMode = Horizontal_Center;
+
+if (argv[1] == "hright") 
+	alignMode = Horizontal_Right;
+
+if (argv[1] == "vtop") 
+	alignMode = Vertical_Top;
+
+if (argv[1] == "vcenter") 
+	alignMode = Vertical_Center;
+
+if (argv[1] == "vbottom" || argv[1] == "vbot") 
+	alignMode = Vertical_Bottom;
+
+if (board) {
+	board(B) {
+		B.elements(E) {
+			if (ingroup(E)) {
+				elements[selectedItemsCount] = E;
+				
+				if (E.x < minX)
+					minX = u2mil(E.x);
+					
+				if (E.x > maxX)
+					maxX = u2mil(E.x);
+				
+				if (E.y < minY)
+					minY = u2mil(E.y);
+					
+				if (E.y > maxY)
+					maxY = u2mil(E.y);
+				selectedItemsCount++;
+			}
+		}
+	}
+	
+	if (selectedItemsCount == 0) {
+		dlgMessageBox("No objects selected", "&Ok");
+	} else {
+		for (int i = 0; i<selectedItemsCount; i++) {
+			switch (alignMode) {
+				case Horizontal_Left:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, elements[i].name, minX, u2mil(elements[i].y));
+					break;
+				case Horizontal_Center:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, elements[i].name, (maxX - minX)/2 + minX, u2mil(elements[i].y));
+					break;
+				case Horizontal_Right:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, elements[i].name, maxX, u2mil(elements[i].y));
+					break;	
+				case Vertical_Top:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, elements[i].name, u2mil(elements[i].x), maxY);
+					break;
+				case Vertical_Center:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, elements[i].name, u2mil(elements[i].x), (maxY - minY)/2 + minY);
+					break;
+				case Vertical_Bottom:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, elements[i].name, u2mil(elements[i].x), minY);
+					break;
+				default:
+					dlgMessageBox("Invalid align mode argument: "+argv[1], "&Ok");
+					break;
+			}
+		}
+	}
+} /*else if (schematic) {
+	schematic(SCH) {
+		char selectionFound = 0;
+		SCH.sheets(S) {
+			S.instances(I) {
+				if (ingroup(I)) {
+					selectionFound = 1;
+					instances[selectedItemsCount] = I;
+					
+					if (I.x < minX)
+						minX = u2mil(I.x);
+						
+					if (I.x > maxX)
+						maxX = u2mil(I.x);
+					
+					if (I.y < minY)
+						minY = u2mil(I.y);
+						
+					if (I.y > maxY)
+						maxY = u2mil(I.y);
+					selectedItemsCount++;
+				}
+			}
+			
+			// quit the sheet loop if found a selected part
+			// I have no idea how can be selection on multiple sheets, but if it could be that would mess up the 
+			// result of the script
+			if (selectionFound)
+				break;
+		}
+	}
+	
+	if (selectedItemsCount == 0) {
+		dlgMessageBox("No objects selected", "&Ok");
+	} else {
+		for (int i = 0; i<selectedItemsCount; i++) {
+			switch (alignMode) {
+				case Horizontal_Left:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, instances[i].name, minX, u2mil(instances[i].y));
+					break;
+				case Horizontal_Center:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, instances[i].name, (maxX - minX)/2 + minX, u2mil(instances[i].y));
+					break;
+				case Horizontal_Right:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, instances[i].name, maxX, u2mil(instances[i].y));
+					break;	
+				case Vertical_Top:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, instances[i].name, u2mil(instances[i].x), maxY);
+					break;
+				case Vertical_Center:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, instances[i].name, u2mil(instances[i].x), (maxY - minY)/2 + minY);
+					break;
+				case Vertical_Bottom:
+					sprintf(retCommand, "%sMOVE %s (%fmil %fmil);\n", retCommand, instances[i].name, u2mil(instances[i].x), minY);
+					break;
+				default:
+					dlgMessageBox("Invalid align mode argument: "+argv[1], "&Ok");
+					break;
+			}
+		}
+	}
+}*/
+exit(retCommand);
+
