@@ -1,0 +1,14 @@
+#usage "en: <b>An ULP to add easily the >NAME and >VALUE texts to symbols and packages</b>"
+			"<p>The latest version can be obtained from the <a href=https://github.com/martonmiklos/ulps_for_eagle>GitHub</a></p>"
+            "<p><author>Author: <a href=mailto:martonmiklosqdev@gmail_dot_com>Miklos Marton </author></a><p>"
+            
+if (symbol) {
+	exit("change layer names; text '>NAME' (0, 1.27); change layer values; text '>VALUE' (0, -1.27);");
+}
+
+if (package) {
+	exit("change layer tnames; text '>NAME' (0, 1.27); change layer tvalues; text '>VALUE' (0, -1.27);");
+}
+
+
+
