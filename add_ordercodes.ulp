@@ -1,0 +1,118 @@
+#require 6.0000
+
+string tr(string s)
+{
+    return s;
+}
+
+
+if (!schematic)
+{
+  dlgMessageBox (usage + tr ("<hr><b>ERROR: No schematic!</b><p>\nThis program can only work in"
+                 " the schematic editor."));
+  exit (1);
+}
+
+
+int CSVSeparator = 0;
+int RefDefsColumn = 0;
+string csvPath;
+int ocsSize = 0;
+string ocNames[];
+int ocIndexes[];
+
+string StripWhiteSpace (string s)
+{
+  while (s && isspace (s [0]))
+    s = strsub (s, 1);
+  while (s && isspace (s [strlen (s) - 1]))
+    s = strsub (s, 0, strlen (s) - 1);
+  return s;
+}
+
+int findSheetIndex(string refdef)
+{
+    schematic(S) {
+        S.parts(P) {
+            P.instances(I) {
+                if (I.name == refdef)
+                    return I.sheet;
+            }
+        }
+    } 
+    return -1;
+}
+
+string import(string csvPath, char CSVSeparator, int refdefsIndex)
+{
+    string ret = "";
+   
+    string lines[];
+    int nLines = fileread(lines, csvPath);
+    string cols[];
+    int sheetIndex = -1;
+    for (int lineIndex = 0; lineIndex < nLines; lineIndex++) {
+        int colC = strsplit(cols, lines[lineIndex], CSVSeparator); 
+        if (lineIndex == 0) {
+            // first line shall contain the OC_fields
+            for (int col = 0; col<colC; col++) {
+                string prefix = strsub(cols[col], 0, 3);
+                if (prefix == "OC_" || prefix == "oc_") {
+                    ocNames[ocsSize] = cols[col];
+                    ocIndexes[ocsSize] = col;
+                    ocsSize++;
+                }
+            }
+        } else {
+            string refdefs[];
+            int refdefsC = strsplit(refdefs, cols[refdefsIndex], ','); 
+            for (int ri = 0; ri<refdefsC; ri++) {
+                string refdes = StripWhiteSpace(refdefs[ri]);
+                for (int ocIndex = 0; ocIndex < ocsSize; ocIndex++) {
+                    if (cols[ocIndexes[ocIndex]] != "") {
+                        int sheetIndexTmp = findSheetIndex(refdes);
+                        if (sheetIndexTmp != -1) {
+                            if (sheetIndexTmp != sheetIndex)
+                                sprintf(ret, "%sEDIT .s%d;\n", ret, sheetIndexTmp);
+                            sheetIndex = sheetIndexTmp;
+                            sprintf(ret, "%sCHANGE DISPLAY OFF;\n", ret);
+                            sprintf(ret, "%sATTRIBUTE %s %s '%s';\n", ret, refdes, ocNames[ocIndex], cols[ocIndexes[ocIndex]]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return ret;
+}
+
+
+dlgDialog (tr ("Import ordercodes from Bill Of Material"))
+{
+    dlgLabel(tr("This ULP requires a CSV file (exported by bom_w_attr.ulp for e.g.).\n"
+    "The script will pull the attributes from columns named OC_* and add it to the devices in the schematic."));
+    dlgGroup (tr ("BoM file"))
+    {
+        dlgStringEdit (csvPath);
+        dlgPushButton("Browse") {
+        csvPath = dlgFileOpen("Select the BoM file", "", "*.csv"); 
+        }
+    }
+  dlgHBoxLayout
+  {
+    dlgGroup (tr ("Reference designators colum (0 based)"))
+    {
+      dlgSpinBox (RefDefsColumn);
+    }
+	dlgStretch (1);
+  }
+  dlgHBoxLayout
+  {
+    dlgStretch (1);
+    dlgPushButton (tr ("Import")) exit(import (csvPath, ';', RefDefsColumn));
+    dlgPushButton (tr ("-Close"))   dlgAccept ();
+	dlgStretch(1);
+  }
+};
+
+//exit(import("/home/mm/Projektek/eagle/tiva_shield_2016/iac_2017_BOM.csv", ';', 3));
