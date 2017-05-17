@@ -1,0 +1,269 @@
+#require 4.1200
+#usage "en:  <h3>Functions for reading/ writing INI Files</h3>\n"
+            "This ULP provides four very basic functions, which allow you reading and writing INI-Files.<br>"
+            "<br>Reading from an INI-File:<br>"
+            "<code>string INI_GetString(string SectionName, string KeyName, string Default, string IniFileName);</code><br>"
+            "<code>int INI_GetInteger(string SectionName, string KeyName, int Default, string IniFileName);</code><br>"
+            "<br>Parameters:<ul>"
+            "<li><i>SectionName</i><br>"
+            "Specifies the name of the section to read from. This name is case-sensitive.<br>"
+            "<li><i>KeyName</i><br>"
+            "Specifies the name of the value to read. The character '[' and the character '=' is not allowed in key names."
+            "This name is case-sensitive.<br>"
+            "<li><i>Default</i><br>"
+            "If the value cannot be read from the file, this value will be returned.<br>"
+            "<li><i>IniFileName</i><br>"
+            "This is the file to be read from.<br>"
+            "</ul>"
+            "<br>Writing to an INI-File:<br>"
+            "<code>void INI_PutString(string SectionName, string KeyName, string StringToAdd, string IniFileName);</code><br>"
+            "<code>void INI_PutInteger(string SectionName, string KeyName, string IntToAdd, string IniFileName);</code><br>"
+            "<br>Paramters:<ul>"
+            "<li><i>SectionName</i><br>"
+            "Gives the name of the section to write to. This name is case-sensitive.<br>"
+            "<li><i>KeyName</i><br>"
+            "Gives the name of the value to write. The character '[' is not allowed in key names.<br>"
+            "<li><i>StringToAdd</i><br>"
+            "(INI_PutString only) This is the value to write. An empty string removes <i>KeyName</i>  from the file.<br>"
+            "<li><i>IntToAdd</i><br>"
+            "(INI_PutInteger only) This is the value to write.<br>"
+            "<li><i>IniFileName</i><br>"
+            "This is the file to write to. If the file does not exist, it gets created.<br>"
+            "</ul><br>"
+            "<p><author>Author: rk@tbkoenig.de</author></p>",
+       "de:  <h3>Funktionen zum Schreiben/ Lesen von INI-Dateien</h3>\n"
+            "Dieses ULP liefert vier sehr einfach gestrickte Funktionen, mit denen"
+            "es möglich ist, Strings in INI-Dateien zu schreiben oder aus ihnen zu lesen.<br>"
+            "<br>Aus einer INI-Datei lesen:<br>"
+            "<code>string INI_GetString(string SectionName, string KeyName, string Default, string IniFileName);</code><br>"
+            "<code>int INI_GetInteger(string SectionName, string KeyName, int Default, string IniFileName);</code><br>"
+            "<br>Parameter:<ul>"
+            "<li><i>SectionName</i><br>"
+            "Spezifiziert den Namen der Sektion, aus der gelesen werden soll. Dieser Name ist case-sensitive.<br>"
+            "<li><i>KeyName</i><br>"
+            "Spezifiziert den Namen des Wertes, der gelesen werden soll. Bis auf Zeichen '[' und '=' ist alles erlaubt."
+            "Dieser Name ist case-sensitive.<br>"
+            "<li><i>Default</i><br>"
+            "Kann der angegebene Wert aus der angegebenen Sektion des angegebenen INI-Files nicht gelesen werden,"
+            "wird dieser Wert zurückgeliefert.<br>"
+            "<li><i>IniFileName</i><br>"
+            "Spezifiziert das File, aus dem gelesen werden soll.<br>"
+            "</ul>"
+            "<br>In eine INI-Datei schreiben:<br>"
+            "<code>void INI_PutString(string SectionName, string KeyName, string StringToAdd, string IniFileName);</code><br>"
+            "<code>void INI_PutInteger(string SectionName, string KeyName, int IntToAdd, string IniFileName);</code><br>"
+            "<br>Paramter:<ul>"
+            "<li><i>SectionName</i><br>"
+            "Spezifiziert den Namen der Sektion, in die geschrieben werden soll. Dieser Name ist case-sensitive.<br>"
+            "<li><i>KeyName</i><br>"
+            "Spezifiziert den Namen des Wertes, der geschrieben werden soll. Bis auf das Zeichen '[' ist alles erlaubt."
+            "Dieser Name ist case-sensitive.<br>"
+            "<li><i>StringToAddt</i><br>"
+            "(nur INI_PutString) Dies ist der Wert, der geschrieben wird. Ein leerer String entfernt den Eintrag <i>KeyName</i>aus der Datei.<br>"
+            "<li><i>IntToAddt</i><br>"
+            "(nur INI_PutInteger) Dies ist der Wert, der geschrieben wird."
+            "<li><i>IniFileName</i><br>"
+            "Spezifiziert das File, in das geschrieben werden soll. Existiert die Datei nicht, wird sie angelegt.<br>"
+            "</ul><br>"
+            "<p><author>Autor: rk@tbkoenig.de</author></p>"
+
+int Static_FileExists(string strName)
+{
+    string strFiles[];
+    return (fileglob(strFiles, strName) != 0);
+}
+
+int Static_IsComment(string str)
+{
+    int nIndex, nPos = strchr(str, ';');
+
+    if(nPos < 0)
+        return 0;
+
+    for(nIndex = 0; nIndex < nPos; ++nIndex)
+        if((str[nIndex] != ' ') && (str[nIndex] != '\t'))
+            return 0;
+
+    return 1;
+}
+
+int Static_IsSectionHeader(string str)
+{
+    int nPos1, nPos2;
+
+    if(Static_IsComment(str))
+        return 0;
+
+    if(0 > (nPos1 = strchr(str, '[')))
+        return 0;
+
+    if(0 > (nPos2 = strchr(str, '=')))
+        return 1;
+
+    return (nPos1 < nPos2);
+}
+
+string Static_ExtractSectionName(string strHeader)
+{
+    string str = strHeader;
+
+    while(0 != strchr(str, '['))
+    {
+        if((str[0] != ' ') && (str[0] != '\t'))
+            return "";
+
+        str = strsub(str, 1);
+    }
+
+    int nPos = strchr(str, ']');
+
+    if(nPos < 0)
+        return "";
+
+    string strExtra = strsub(str, nPos + 1);
+
+    while(strExtra != "")
+    {
+        if((strExtra[0] != ' ') && (strExtra[0] != '\t'))
+        {
+            if(!Static_IsComment(strExtra))
+                return "";
+
+            break;
+        }
+
+        strExtra = strsub(strExtra, 1);
+    }
+
+    return strsub(str, 1, nPos - 1);
+}
+
+string INI_GetString(string SectionName, string KeyName, string strDefault, string IniFileName)
+{
+    if(!Static_FileExists(IniFileName))
+        return strDefault;
+
+    string strLine[];
+    int nLines, nLine, nPos;
+
+    nLines = fileread(strLine, IniFileName);
+
+    for(nLine = 0; nLines > nLine; ++nLine)
+    {
+        if(Static_IsSectionHeader(strLine[nLine]))
+        {
+            if(Static_ExtractSectionName(strLine[nLine]) == SectionName)
+                break;
+        }
+    }
+
+    for(++nLine; nLines > nLine; ++nLine)
+    {
+        if(Static_IsSectionHeader(strLine[nLine]))
+            return(strDefault);
+
+        if(Static_IsComment(strLine[nLine]))
+            continue;
+
+        if(0 > (nPos = strchr(strLine[nLine], '=')))
+            continue;
+
+        if(strsub(strLine[nLine], 0, nPos) != KeyName)
+            continue;
+
+        return(strsub(strLine[nLine], nPos + 1));
+    }
+
+    return(strDefault);
+}
+
+int INI_GetInteger(string SectionName, string KeyName, int nDefault, string IniFileName)
+{
+    string strDefault;
+    sprintf(strDefault, "%d", nDefault);
+    return strtol(INI_GetString(SectionName, KeyName, strDefault, IniFileName));
+}
+
+void INI_PutString(string SectionName, string KeyName, string StringToAdd, string IniFileName)
+{
+    int nLines, nLine, nPos, bSectionExists = 0, bDone = 0;
+    string strLine[];
+
+    nLines = (Static_FileExists(IniFileName)) ? fileread(strLine, IniFileName) : 0;
+
+    output(IniFileName)
+    {
+        for(nLine = 0; nLine < nLines; ++nLine)
+        {
+            if(!bDone && !bSectionExists)
+            {
+                if(Static_IsSectionHeader(strLine[nLine]))
+                {
+                    if(Static_ExtractSectionName(strLine[nLine]) == SectionName)
+                    {
+                        bSectionExists = 1;
+
+                        do
+                        {
+                            if(strLine[nLine] != "")
+                                printf("%s\n", strLine[nLine]);
+
+                            if(Static_IsSectionHeader(strLine[++nLine]))
+                            {
+                                if(StringToAdd != "")
+                                    printf("%s=%s\n", KeyName, StringToAdd);
+
+                                bDone = 1;
+                                break;
+                            }
+
+                            if(!Static_IsComment(strLine[nLine]))
+                            {
+                                if(0 <= (nPos = strchr(strLine[nLine], '=')))
+                                {
+                                    if(strsub(strLine[nLine], 0, nPos) == KeyName)
+                                    {
+                                        if(StringToAdd != "")
+                                        {
+                                            sprintf(strLine[nLine], "%s=%s", KeyName, StringToAdd);
+                                        }
+                                        else
+                                        {
+                                            strLine[nLine] = "";
+                                        }
+                                        bDone = 1;
+                                        break;
+                                    }
+                                }
+                            }
+                        } while(nLine < nLines);
+                    }
+                }
+            }
+
+            if(strLine[nLine] != "")
+                printf("%s\n", strLine[nLine]);
+        }
+
+        if(!bDone)
+        {
+            if(StringToAdd != "")
+            {
+                if(!bSectionExists)
+                {
+                    printf("[%s]\n", SectionName);
+                }
+                printf("%s=%s\n", KeyName, StringToAdd);
+            }
+        }
+    }
+
+    return;
+}
+
+void INI_PutInteger(string SectionName, string KeyName, int IntToAdd, string IniFileName)
+{
+    string StringToAdd;
+    sprintf(StringToAdd, "%d", IntToAdd);
+    INI_PutString(SectionName, KeyName, StringToAdd, IniFileName);
+}

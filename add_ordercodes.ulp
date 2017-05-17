@@ -14,13 +14,15 @@ if (!schematic)
 }
 
 
-int CSVSeparator = 0;
 int RefDefsColumn = 0;
 string csvPath;
 int ocsSize = 0;
 string ocNames[];
 int ocIndexes[];
+int selectedSeparatorIndex = 1;
+string separators[] = { tr("comma"), tr("semicolon"), tr("tabulator")};
 
+      
 string StripWhiteSpace (string s)
 {
   while (s && isspace (s [0]))
@@ -35,7 +37,7 @@ int findSheetIndex(string refdef)
     schematic(S) {
         S.parts(P) {
             P.instances(I) {
-                if (I.name == refdef)
+                if (P.name == refdef)
                     return I.sheet;
             }
         }
@@ -43,16 +45,34 @@ int findSheetIndex(string refdef)
     return -1;
 }
 
-string import(string csvPath, char CSVSeparator, int refdefsIndex)
+string import(string csvPath, int selectedSeparatorIndex, int refdefsIndex)
 {
     string ret = "";
-   
     string lines[];
+    int CSVSeparator = 0;
     int nLines = fileread(lines, csvPath);
     string cols[];
     int sheetIndex = -1;
+    
+    switch (selectedSeparatorIndex) {
+    case 0:
+      CSVSeparator = ',';
+      break;
+    case 1:
+      CSVSeparator = ';';
+      break;          
+    case 2:
+      CSVSeparator = '\t';
+      break;          
+    }
+    
     for (int lineIndex = 0; lineIndex < nLines; lineIndex++) {
-        int colC = strsplit(cols, lines[lineIndex], CSVSeparator); 
+        int colC = 0;
+        if (CSVSeparator == ',') {
+            
+        } else {
+            colC = strsplit(cols, lines[lineIndex], CSVSeparator);
+        }
         if (lineIndex == 0) {
             // first line shall contain the OC_fields
             for (int col = 0; col<colC; col++) {
@@ -61,6 +81,7 @@ string import(string csvPath, char CSVSeparator, int refdefsIndex)
                     ocNames[ocsSize] = cols[col];
                     ocIndexes[ocsSize] = col;
                     ocsSize++;
+                    printf("Oredercode column found in %d col\n", col);
                 }
             }
         } else {
@@ -68,7 +89,11 @@ string import(string csvPath, char CSVSeparator, int refdefsIndex)
             int refdefsC = strsplit(refdefs, cols[refdefsIndex], ','); 
             for (int ri = 0; ri<refdefsC; ri++) {
                 string refdes = StripWhiteSpace(refdefs[ri]);
+                if (refdes == "")
+                    continue;
+                printf("Looking ordercodes for %s\n", refdes);
                 for (int ocIndex = 0; ocIndex < ocsSize; ocIndex++) {
+                    printf("OC in col %d == %s\n", ocIndexes[ocIndex], cols[ocIndexes[ocIndex]]);
                     if (cols[ocIndexes[ocIndex]] != "") {
                         int sheetIndexTmp = findSheetIndex(refdes);
                         if (sheetIndexTmp != -1) {
@@ -77,15 +102,19 @@ string import(string csvPath, char CSVSeparator, int refdefsIndex)
                             sheetIndex = sheetIndexTmp;
                             sprintf(ret, "%sCHANGE DISPLAY OFF;\n", ret);
                             sprintf(ret, "%sATTRIBUTE %s %s '%s';\n", ret, refdes, ocNames[ocIndex], cols[ocIndexes[ocIndex]]);
+                        } else {
+                            printf("Unable to find part %s\n", refdes);
                         }
                     }
                 }
             }
         }
     }
+    printf(ret);
     return ret;
 }
 
+output("/tmp/test.txt", "wt") {
 
 dlgDialog (tr ("Import ordercodes from Bill Of Material"))
 {
@@ -95,24 +124,29 @@ dlgDialog (tr ("Import ordercodes from Bill Of Material"))
     {
         dlgStringEdit (csvPath);
         dlgPushButton("Browse") {
-        csvPath = dlgFileOpen("Select the BoM file", "", "*.csv"); 
+            csvPath = dlgFileOpen("Select the BoM file", "", "*.csv"); 
         }
     }
   dlgHBoxLayout
   {
     dlgGroup (tr ("Reference designators colum (0 based)"))
     {
+      // TODO create a dlgComboBox with A-Z...
       dlgSpinBox (RefDefsColumn);
     }
-	dlgStretch (1);
+    dlgGroup (tr ("Column separator"))
+    {
+      dlgComboBox(separators, selectedSeparatorIndex);
+    }
+    dlgStretch (1);
   }
   dlgHBoxLayout
   {
     dlgStretch (1);
-    dlgPushButton (tr ("Import")) exit(import (csvPath, ';', RefDefsColumn));
-    dlgPushButton (tr ("-Close"))   dlgAccept ();
+    dlgPushButton (tr ("Import")) exit(import(csvPath, selectedSeparatorIndex, RefDefsColumn));
+    dlgPushButton (tr ("-Close")) dlgAccept();
 	dlgStretch(1);
   }
 };
 
-//exit(import("/home/mm/Projektek/eagle/tiva_shield_2016/iac_2017_BOM.csv", ';', 3));
+}
