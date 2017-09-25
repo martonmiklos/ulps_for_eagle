@@ -1,0 +1,60 @@
+#require 6.0000
+
+// we might localize... once...
+string tr(string s)
+{
+    return s;
+}
+
+if (!schematic) {
+    dlgMessageBox (usage + tr ("<hr><b>ERROR: No schematic!</b><p>\nThis program can only work in the schematic editor."));
+    exit (1);
+}
+
+string cmd = ""; 
+int selectedAction = 0; // initially selects Add
+int selectedVariant = 0; // initially selects Add
+string variants[];
+schematic(SCH) {
+    int i = 0;
+    SCH.variantdefs(VD) {
+        variants[i] = VD.name;
+        i++;
+    }
+} 
+
+//output("/tmp/test.txt", "wt") {
+    int ret = dlgDialog (tr ("Add/remove selected parts to/from an Assembly variant"))
+    {
+        dlgHBoxLayout {
+            string actions[] = { "Remove", "Add"};
+            dlgComboBox(actions, selectedAction);
+            dlgLabel(tr(" the selected parts to/from the "));
+            dlgComboBox(variants, selectedVariant);
+        }
+        dlgHBoxLayout {
+            dlgPushButton(tr("+Ok")) dlgAccept();
+            dlgPushButton(tr("-Cancel")) dlgReject();
+        }
+    };
+    if (ret == 1) {
+        schematic(S) {
+            S.sheets(SHEET) {
+                SHEET.instances(INSTANCE) {
+                    if (ingroup(INSTANCE) && INSTANCE.part.device.package) {
+                        sprintf(
+                            cmd,
+                            "%sVARIANT %s %s %s;\n",
+                            cmd,
+                            variants[selectedVariant],
+                            INSTANCE.part.name,
+                            selectedAction == 0 ? "NOPOPULATE" : "POPULATE"
+                        );                    
+                    }
+                }
+            }
+        } 
+    }
+    //printf("%s", cmd);
+//}
+exit(cmd);

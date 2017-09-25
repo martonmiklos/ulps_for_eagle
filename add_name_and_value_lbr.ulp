@@ -3,11 +3,11 @@
             "<p><author>Author: <a href=mailto:martonmiklosqdev@gmail_dot_com>Miklos Marton </author></a><p>"
             
 if (symbol) {
-	exit("change layer names; text '>NAME' (0, 1.27mm); change layer values; text '>VALUE' (0, -1.27mm);");
+	exit("change size 50mil;  change layer names; text '>NAME' (0, 1.27mm); change layer values; text '>VALUE' (0, -1.27mm);");
 }
 
 if (package) {
-	exit("change layer tnames; text '>NAME' (0, 1.27mm); change layer tvalues; text '>VALUE' (0, -1.27mm);");
+	exit("change size 50mil; change layer tnames; text '>NAME' (0, 1.27mm); change layer tvalues; text '>VALUE' (0, -1.27mm);");
 }
 
 
