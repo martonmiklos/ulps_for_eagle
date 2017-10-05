@@ -35,3 +35,10 @@ This ULP can be used to add/remove selectd parts to/from a selected Assembly var
 * Run ULP
 * Select the action and the board variant
 * Click Ok
+
+show_values.ulp
+=============
+This ULP was originally written by Karsten Brandt.
+Following features were added:
+* Command line argument handling: RUN show_values 100n {top,bottom}
+* Ability to display parts only on top/bottom side
