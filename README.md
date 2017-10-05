@@ -35,6 +35,7 @@ This ULP can be used to add/remove selectd parts to/from a selected Assembly var
 * Run ULP
 * Select the action and the board variant
 * Click Ok
+![selection_to_variant](https://raw.githubusercontent.com/martonmiklos/ulps_for_eagle/master/screenshots/selection_to_variant.png "selection_to_variant.ulp in action")
 
 show_values.ulp
 =============
@@ -42,3 +43,4 @@ This ULP was originally written by Karsten Brandt.
 Following features were added:
 * Command line argument handling: RUN show_values 100n {top,bottom}
 * Ability to display parts only on top/bottom side
+![show_values_screenshot](https://raw.githubusercontent.com/martonmiklos/ulps_for_eagle/master/screenshots/show_values.png "show_values.ulp in action")
