@@ -16,7 +16,8 @@ This ULP can be used to add/remove selectd parts to/from a selected Assembly var
 show_values.ulp
 =============
 This ULP was originally written by Karsten Brandt.
-Following features were added:
+
+Following features were added by me:
 * Command line argument handling: RUN show_values 100n {top,bottom}
 * Ability to display parts only on top/bottom side
 
