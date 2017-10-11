@@ -36,3 +36,14 @@ Add the following to your .eaglerc:
 ```
 Lbr.MenuText.<whatever is your last menu index + 1> = "Place labels: RUN add_name_and_value_lbr.ulp;"
 ```
+
+normalize-text.ulp
+=============
+Originally written by Tennessee Carmel-Veilleux
+
+This ULP can be used programatically change all silkscreen texts (texts on {t,b}Names, {t,b}Place layers) to a specified size, weight, and font type.
+
+Modifications added by me:
+* Ability to set font type
+* Saving settings to INI file
+
