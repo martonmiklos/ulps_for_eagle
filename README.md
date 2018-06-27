@@ -50,3 +50,8 @@ Modifications added by me:
 * Ability to set font type
 * Saving settings to INI file
 
+
+generate_header_direction
+=============
+
+ULP to generate macros from net definitions for AVR GCC or PIC XC projects.
