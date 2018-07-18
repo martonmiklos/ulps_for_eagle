@@ -55,3 +55,9 @@ generate_header_direction
 =============
 
 ULP to generate macros from net definitions for AVR GCC or PIC XC projects.
+
+
+CubeMX2EAGLE
+=============
+
+This ULP generate nets around the selected part and place XREF labels on the nets according to the User labels in the CubeMX project.
