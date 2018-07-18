@@ -61,3 +61,4 @@ CubeMX2EAGLE
 =============
 
 This ULP generate nets around the selected part and place XREF labels on the nets according to the User labels in the CubeMX project.
+![CubeMX2EAGLE-screenshot](https://raw.githubusercontent.com/martonmiklos/ulps_for_eagle/master/screenshots/CubeMX2EAGLE.gif "CubeMX2EAGLE.ulp in action")
