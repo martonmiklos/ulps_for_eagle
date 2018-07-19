@@ -47,8 +47,8 @@ string GetIniFileName(void)
 
 string ret = "";
 string partNames[];
-string iocFilePath = INI_GetString(strlwr(get_ulp_name()), "iocFilePath", "", GetIniFileName());
-string mcuRefDes = INI_GetString(strlwr(get_ulp_name()), "mcuRefDes", "", GetIniFileName());
+string iocFilePath = INI_GetString(strlwr(get_ulp_name()), "iocFilePath", EAGLE_HOME, GetIniFileName());
+string mcuRefDes = INI_GetString(strlwr(get_ulp_name()), "mcuRefDes", EAGLE_DIR + "/..", GetIniFileName());
 string cubeMXPath = INI_GetString(strlwr(get_ulp_name()), "cubeMXPath", "", GetIniFileName());
 
 schematic(SCH) {
@@ -77,14 +77,22 @@ if (argc < 4) {
     int result = dlgDialog("Choose the part") {
         dlgComboBox(partNames, selectedPartNameIndex);
         dlgHBoxLayout {
-            dlgLabel("CubeMX file:");
+            dlgLabel("CubeMX project file:");
             dlgStringEdit(iocFilePath);
+            dlgPushButton("...") {
+                iocFilePath = dlgFileOpen("Please select the CubeMX project file", iocFilePath, "STM32CubeMX Project files (*.ioc);;STM8CubeMX Project files (*.ioc8)");
+            }
         }
         dlgHBoxLayout {
-            dlgLabel("STM8CubeMX installation path:");
+            dlgLabel("CubeMX installation path:");
             dlgStringEdit(cubeMXPath);
+            dlgPushButton("...") {
+                cubeMXPath = dlgDirectory("Please select the CubeMX installation path", cubeMXPath);
+            }
         } 
-        dlgPushButton("Generate nets") dlgAccept(0);
+        dlgPushButton("Generate nets") {
+            dlgAccept(0);
+        }
     };
     
     if (result != 0)
@@ -102,11 +110,11 @@ string pinXMLTags[];
 int XMLPinCount = 0;
 if (MCUName != "") {
     string XML;
-    if (fileread(XML, cubeMXPath + "db/mcu/" + MCUName + ".xml") != 0) {
+    if (fileread(XML, cubeMXPath + "/db/mcu/" + MCUName + ".xml") != 0) {
         XMLPinCount = xmlelements(pinXMLTags, XML, "Mcu/Pin");
     } else {
         string btnLabel = "";
-        sprintf(btnLabel, "Unable to read the %s XML file!\nCheck the STM8CubeMX installation folder", cubeMXPath + "db/mcu/" + MCUName + ".xml");
+        sprintf(btnLabel, "Unable to read the %s XML file!\nCheck the CubeMX installation folder", cubeMXPath + "db/mcu/" + MCUName + ".xml");
         dlgMessageBox(btnLabel);
         exit(0);
     }
