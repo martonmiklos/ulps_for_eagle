@@ -113,7 +113,7 @@ if(board) board(B)
             showPartsOnSides = ShowBothSides;
             if (strlwr(argv[2]) == "top") {
                 showPartsOnSides = ShowTopOnly;
-            } else if (strlwr(argv[2]) == "bottom") {
+            } else if (strlwr(argv[2]) == "bottom" || strlwr(argv[2]) == "bot") {
                 showPartsOnSides = ShowBottomOnly;
             }
         }

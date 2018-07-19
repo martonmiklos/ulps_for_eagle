@@ -1,0 +1,209 @@
+/*
+	Copyright 2018  Miklos Marton <martonmiklosqdev [at] gmail [pont] com>
+	This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+#usage "<b>ULP to sync the nets from a CubeMX to the EAGLE schematic.</b>\n"
+       "<P>RUN CubeMX2EAGLE <MCURefdes> <CubeMX project IOC or IOC8 file path> <CubeMX installation folder></P>"
+       "<p>It will generate nets around the selected part and place XREF labels on the nets according to the User labels in the CubeMX project</p>"
+       "<p>"
+       "<author>Author: Miklos Marton (martonmiklosqdev -at- gmail.com)</author>"
+
+#include "IniFile.ulp"
+#include "useful-routines.ulp"
+/**
+* str_replace
+*
+* Replaces all occurrences of a substring found within a string.
+*/
+string str_replace(string search, string replace, string subject) {
+    int lastpos = 0;
+    while(strstr(subject, search, lastpos) >= 0) {
+        int pos = strstr(subject, search, lastpos);
+        string before = strsub(subject, 0, pos);
+        string after = strsub(subject, pos + strlen(search));
+        subject = before + replace + after;
+        lastpos = pos + strlen(replace);
+    }
+    return subject;
+}
+
+string GetIniFileName(void)
+{
+    return filesetext(argv[0], ".ini");
+}
+
+string ret = "";
+string partNames[];
+string iocFilePath = INI_GetString(strlwr(get_ulp_name()), "iocFilePath", "", GetIniFileName());
+string mcuRefDes = INI_GetString(strlwr(get_ulp_name()), "mcuRefDes", "", GetIniFileName());
+string cubeMXPath = INI_GetString(strlwr(get_ulp_name()), "cubeMXPath", "", GetIniFileName());
+
+schematic(SCH) {
+    int i = 0;
+    SCH.parts(PART) {
+        // list only devices with 8 pin or more
+        int pinCount = 0;
+        PART.instances(INST) {
+            INST.gate.symbol.pins(PIN) {
+                pinCount++;
+                if (pinCount >= 8)
+                    break;
+            }
+        }
+        
+        // filter out devices > with 8 pins
+        if (pinCount >= 8) {
+            partNames[i] = PART.name;
+            i++;
+        }
+    }
+}
+
+if (argc < 4) {
+    int selectedPartNameIndex = 0;
+    int result = dlgDialog("Choose the part") {
+        dlgComboBox(partNames, selectedPartNameIndex);
+        dlgHBoxLayout {
+            dlgLabel("CubeMX file:");
+            dlgStringEdit(iocFilePath);
+        }
+        dlgHBoxLayout {
+            dlgLabel("STM8CubeMX installation path:");
+            dlgStringEdit(cubeMXPath);
+        } 
+        dlgPushButton("Generate nets") dlgAccept(0);
+    };
+    
+    if (result != 0)
+        exit(0);
+    
+    mcuRefDes = partNames[selectedPartNameIndex];
+} else {
+    mcuRefDes = argv[1];
+    iocFilePath = argv[2];
+}
+
+string MCUName = INI_GetString("", "Mcu.Name", "", iocFilePath);
+string pinsXML = "";
+string pinXMLTags[];
+int XMLPinCount = 0;
+if (MCUName != "") {
+    string XML;
+    if (fileread(XML, cubeMXPath + "db/mcu/" + MCUName + ".xml") != 0) {
+        XMLPinCount = xmlelements(pinXMLTags, XML, "Mcu/Pin");
+    } else {
+        string btnLabel = "";
+        sprintf(btnLabel, "Unable to read the %s XML file!\nCheck the STM8CubeMX installation folder", cubeMXPath + "db/mcu/" + MCUName + ".xml");
+        dlgMessageBox(btnLabel);
+        exit(0);
+    }
+}
+
+string pinNumberStr = INI_GetString("", "Mcu.PinsNb", "0", iocFilePath);
+if (pinNumberStr != "0") {
+    string netNames[];
+    string pinNumbers[];
+    int pinCount = strtol(pinNumberStr);
+    for (int pinIndex = 0; pinIndex<pinCount; pinIndex++) {
+        string keyName;
+        sprintf(keyName,  "Mcu.Pin%d", pinIndex);
+        string pinName = INI_GetString("", keyName, "", iocFilePath);
+        if (pinName != "") {
+            string keyName;
+            sprintf(keyName,  "%s.GPIOParameters", pinName);
+            if (INI_GetString("", keyName, "", iocFilePath) == "GPIO_Label") {
+                sprintf(keyName,  "%s.GPIO_Label", pinName);
+                string netName = INI_GetString("", keyName, "", iocFilePath);
+                
+                string pinNumber = "";
+                for (int i = 0; i<XMLPinCount; i++) {
+                    string pinIndexStr = "";
+                    if (pinName == xmlattribute(pinXMLTags[i], "Pin", "Name")) {
+                        pinNumber = xmlattribute(pinXMLTags[i], "Pin", "Position");
+                        break;
+                    }
+                }
+                netNames[pinIndex] = netName;
+                pinNumbers[pinIndex] = pinNumber;
+            }
+        }
+    }
+    
+    schematic(SCH) {
+        SCH.parts(PART) {
+            output("/tmp/foo.txt", "wt") {
+            //UL_SYMBOL symbol = PART.instances()[0].xrefs()[0].symbol();
+            //printf("SYMBOL %d %d", PART.instances()[0].xrefs()[0].symbol().x(), PART.instances()[0].xrefs()[0].symbol().y());
+            if (PART.name == mcuRefDes) {
+                PART.instances(instance) {
+                    instance.gate.symbol.pins(pin) {
+                        int contactCount = 0;
+                        string padName = "";
+                        pin.contacts(contact) {
+                            padName = contact.name;
+                            contactCount++;
+                        }
+                        
+                        // A single pin could be appended to multiple pads.
+                        // we are not looking for appended pads
+                        if (contactCount == 1) {
+                            for (int pinIndex = 0; pinIndex<pinCount; pinIndex++) {
+                                if (pinNumbers[pinIndex] == padName) {
+                                    string command = "";
+                                    real pinX = u2inch(pin.x);
+                                    real pinY = u2inch(pin.y);
+                                    switch (int(pin.angle)) {
+                                    case 0:
+                                        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netNames[pinIndex], pinX, pinY, pinX - 0.1, pinY);
+                                        sprintf(command, "%sLABEL XREF R180 (%finch %finch) (%finch %finch);\n", command, pinX - 0.1, pinY, pinX - 0.1, pinY);
+                                        break;
+                                    case 270:
+                                        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netNames[pinIndex], pinX, pinY, pinX, pinY + 0.1);
+                                        sprintf(command, "%sLABEL XREF R90 (%finch %finch) (%finch %finch);\n", command, pinX, pinY + 0.1, pinX, pinY + 0.1);
+                                        break;
+                                    case 180:
+                                        sprintf(command, "NET %s (%finch %finch) (%finch %finch);\n", netNames[pinIndex], pinX, pinY, pinX + 0.1, pinY);
+                                        sprintf(command, "%sLABEL XREF R0 (%finch %finch) (%finch %finch);\n", command, pinX + 0.1, pinY, pinX + 0.1, pinY);
+                                        break;
+                                    case 90:
+                                        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netNames[pinIndex], pinX, pinY, pinX, pinY - 0.1);
+                                        sprintf(command, "%sLABEL XREF R270 (%finch %finch) (%finch %finch);\n", command, pinX, pinY - 0.1, pinX, pinY - 0.1);
+                                        break;
+                                    }
+                                    sprintf(ret, "%s%s", ret, command);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // found the part -> quit
+                break;
+            } // if (PART.name == mcuRefDes)
+        } // SCH.parts
+        }
+    } // SCH
+} else {
+    dlgMessageBox("Unable to find Mcu.PinsNb in the ioc file!\nMaybe it is malformed?");
+    exit(0);
+}
+
+INI_PutString(strlwr(get_ulp_name()),  "iocFilePath", iocFilePath, GetIniFileName());
+INI_PutString(strlwr(get_ulp_name()),  "mcuRefDes", mcuRefDes, GetIniFileName());
+INI_PutString(strlwr(get_ulp_name()),  "cubeMXPath", cubeMXPath, GetIniFileName());
+
+exit(ret);
