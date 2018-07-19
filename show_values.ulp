@@ -90,7 +90,8 @@ string InputBox(string strPrompt, string strTitle, string strDefault)
     return((nResult > 0) ? strReturn : "");
 }
 
-int found_bit=0;
+int partWithValueFound=0;
+
 if(board) board(B)
 {
     showPartsOnSides = INI_GetInteger(strlwr(get_ulp_name()), B.name + "_side", ShowBothSides, GetIniFileName());
@@ -143,12 +144,11 @@ if(board) board(B)
             if (!E.populate)
                 continue;
             
-            if((strlwr(E.value) == strlwr(strValue)) && (found_bit==0)) {
-                //printf("show %s\n", E.name);
+            if((strlwr(E.value) == strlwr(strValue)) && (partWithValueFound==0)) {
                 printf("show %s ", E.name);
-                found_bit=1;
+                partWithValueFound=1;
                 ++nCount;
-            } else if((strlwr(E.value) == strlwr(strValue)) && (found_bit==1)) {
+            } else if((strlwr(E.value) == strlwr(strValue)) && (partWithValueFound==1)) {
                 printf(" %s ", E.name);
                 ++nCount;
             }
@@ -192,13 +192,13 @@ else if(sheet) sheet(S)
 
         S.parts(P)
         {
-            if((strlwr(P.value) == strlwr(strValue)) && (found_bit==0))
+            if((strlwr(P.value) == strlwr(strValue)) && (partWithValueFound==0))
             {
                 printf("show %s ", P.name);
-                found_bit=1;
+                partWithValueFound=1;
                 ++nCount;
             }
-            else if((strlwr(P.value) == strlwr(strValue)) && (found_bit==1))
+            else if((strlwr(P.value) == strlwr(strValue)) && (partWithValueFound==1))
             {
                 printf(" %s ", P.name);
                 ++nCount;
