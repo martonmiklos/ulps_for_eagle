@@ -60,5 +60,13 @@ ULP to generate macros from net definitions for AVR GCC or PIC XC projects.
 CubeMX2EAGLE
 =============
 
-This ULP generate nets around the selected part and place XREF labels on the nets according to the User labels in the CubeMX project.
+This ULP generate nets around the selected part and place XREF labels on the generated nets according to the user labels in the CubeMX project.
+Works both with STM32 and STM8 CubeMX as well.
 ![CubeMX2EAGLE-screenshot](https://raw.githubusercontent.com/martonmiklos/ulps_for_eagle/master/screenshots/CubeMX2EAGLE.gif "CubeMX2EAGLE.ulp in action")
+
+normalize-rcl-values.ulp
+=============
+Originally written by: Robert E. Starr (http://www.bobstarr.net)
+
+Modifications:
+- Save UI settings
