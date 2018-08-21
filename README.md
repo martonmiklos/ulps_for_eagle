@@ -41,7 +41,7 @@ normalize-text.ulp
 =============
 Originally written by Tennessee Carmel-Veilleux
 
-This ULP can be used programatically change all silkscreen texts (texts on {t,b}Names, {t,b}Place layers) to a specified size, weight, and font type.
+This ULP can be used programatically change all silkscreen texts to a specified size, weight, and font type.
 
 ![normalize-text-screenshot](https://raw.githubusercontent.com/martonmiklos/ulps_for_eagle/master/screenshots/normalize-text.png "normalize-text.ulp in action")
 
@@ -49,6 +49,7 @@ This ULP can be used programatically change all silkscreen texts (texts on {t,b}
 Modifications added by me:
 * Ability to set font type
 * Saving settings to INI file
+* Implement layer selection
 
 
 generate_header_direction
