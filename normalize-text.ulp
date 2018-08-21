@@ -27,12 +27,13 @@
 
 
 //string VERSION = "1.1";  // 2008-11-07 alf@cadsoft.de
-string VERSION = "1.2";  // 2017-10-11 martonmiklosqdev@gmail.com
+string VERSION = "1.3";  // 2017-10-11 martonmiklosqdev@gmail.com
 
 string GetIniFileName(void)
 {
     return filesetext(argv[0], ".ini");
 }
+
 
 
 int result = 0; // Dialog result
@@ -47,6 +48,17 @@ int silk_screen_layers[] = {LAYER_TPLACE, LAYER_BPLACE, LAYER_TNAMES,
                             LAYER_BNAMES, LAYER_TVALUES, LAYER_BVALUES,
                             LAYER_TDOCU, LAYER_BDOCU, 125, 126 };
                             // 2008-11-07 Layer 125, 126 is created by panalize.ulp.
+                            
+int process_tPlace = INI_GetInteger(strlwr(get_ulp_name()), "process_tPlace", 1, GetIniFileName());
+int process_bPlace = INI_GetInteger(strlwr(get_ulp_name()), "process_tPlace", 1, GetIniFileName());
+int process_tNames = INI_GetInteger(strlwr(get_ulp_name()), "process_tNames", 1, GetIniFileName());
+int process_bNames = INI_GetInteger(strlwr(get_ulp_name()), "process_bNames", 1, GetIniFileName());
+int process_tValues = INI_GetInteger(strlwr(get_ulp_name()), "process_tValues", 1, GetIniFileName());
+int process_bValues = INI_GetInteger(strlwr(get_ulp_name()), "process_bValues", 1, GetIniFileName());
+int process_tDocu = INI_GetInteger(strlwr(get_ulp_name()), "process_tDocu", 1, GetIniFileName());
+int process_bDocu = INI_GetInteger(strlwr(get_ulp_name()), "process_bDocu", 1, GetIniFileName());
+int process_tNames_panelize = INI_GetInteger(strlwr(get_ulp_name()), "process_tNames_panelize", 1, GetIniFileName());
+int process_bNames_panelize = INI_GetInteger(strlwr(get_ulp_name()), "process_bNames_panelize", 1, GetIniFileName());
 
 enum {UNIT_MIL, UNIT_MM, UNIT_PERCENTAGE};
 int  fontSizeUnit = INI_GetInteger(strlwr(get_ulp_name()), "font_size_unit", UNIT_MIL, GetIniFileName());
@@ -98,10 +110,23 @@ void ResetVisible(UL_BOARD B) {
 //
 // Returns 1 if a layer is a silkscreen layer
 //
-
 int SilkScreenText(int layer) {
     int i = 0;
     int found = 0;
+    
+    switch (layer) {
+    case LAYER_TPLACE: if (!process_tPlace) return 0; break;
+    case LAYER_BPLACE: if (!process_bPlace) return 0; break;
+    case LAYER_TNAMES: if (!process_tNames) return 0; break;
+    case LAYER_BNAMES: if (!process_bNames) return 0; break;
+    case LAYER_TVALUES: if (!process_tValues) return 0; break;
+    case LAYER_BVALUES: if (!process_bValues) return 0; break;
+    case LAYER_TDOCU: if (!process_tDocu) return 0; break;
+    case LAYER_BDOCU: if (!process_bDocu) return 0; break;
+    case 125: if (!process_tNames_panelize) return 0; break;
+    case 126: if (!process_bNames_panelize) return 0; break;
+    }
+    
     do {    // 2008-11-07
       if (layer == silk_screen_layers[i]) {
         found = 1;
@@ -221,39 +246,66 @@ if (board) {
                     "from the size and thickness.</P></qt>", VERSION);
         dlgLabel(str);
 
-        // Options
-        dlgHBoxLayout {
-            dlgSpacing(20);
-            dlgGridLayout {
-                dlgCell(0,0) dlgLabel("Text size:");
-                dlgCell(0,1) dlgRealEdit(text_size,0.1,2000.0);
-                dlgCell(0,2) dlgComboBox(fontSizeUnitOptions, fontSizeUnit) {
-                    if (lastunit != fontSizeUnit) {
-                       actsize = text_size*10000;    // 2008-11-07 calculate the value in changed unit
-                       text_size = u2mil(actsize);
-                       actsize = text_thickness*10000;
-                       text_thickness = u2mil(actsize);
-                       lastunit = fontSizeUnit;
+        dlgTabWidget {
+            dlgTabPage("Options") {
+                // Options
+                dlgHBoxLayout {
+                    dlgSpacing(20);
+                    
+                    dlgGridLayout {
+                        dlgCell(0,0) dlgLabel("Text size:");
+                        dlgCell(0,1) dlgRealEdit(text_size,0.1,2000.0);
+                        dlgCell(0,2) dlgComboBox(fontSizeUnitOptions, fontSizeUnit) {
+                            if (lastunit != fontSizeUnit) {
+                                actsize = text_size*10000;    // 2008-11-07 calculate the value in changed unit
+                                text_size = u2mil(actsize);
+                                actsize = text_thickness*10000;
+                                text_thickness = u2mil(actsize);
+                                lastunit = fontSizeUnit;
+                            }
+                        }
+
+                        dlgCell(1,0) dlgLabel("Text Thickness:");
+                        dlgCell(1,1) dlgRealEdit(text_thickness,0.01,500.0);
+                        dlgCell(1,2) dlgComboBox(fontWeightUnitOptions, fontWeightUnit) {
+                            if (lastFontWeightUnit != fontWeightUnit) {
+                                actsize = text_size*10000;    // 2008-11-07 calculate the value in changed unit
+                                text_size = u2mil(actsize);
+                                actsize = text_thickness*10000;
+                                text_thickness = u2mil(actsize);
+                                lastFontWeightUnit = fontWeightUnit;
+                            }
+                        }
+                        
+                        dlgCell(2,0) dlgLabel("Text type:");
+                        dlgCell(2,1) dlgComboBox(fontTypeOptions, selectedFontType);
                     }
                 }
-
-
-                dlgCell(1,0) dlgLabel("Text Thickness:");
-                dlgCell(1,1) dlgRealEdit(text_thickness,0.01,500.0);
-                dlgCell(1,2) dlgComboBox(fontWeightUnitOptions, fontWeightUnit) {
-                    if (lastFontWeightUnit != fontWeightUnit) {
-                       actsize = text_size*10000;    // 2008-11-07 calculate the value in changed unit
-                       text_size = u2mil(actsize);
-                       actsize = text_thickness*10000;
-                       text_thickness = u2mil(actsize);
-                       lastFontWeightUnit = fontWeightUnit;
+            }
+            dlgTabPage("Layers") {
+                dlgHBoxLayout {
+                    /*
+                    int silk_screen_layers[] = {LAYER_TPLACE, LAYER_BPLACE, LAYER_TNAMES,
+                            LAYER_BNAMES, LAYER_TVALUES, LAYER_BVALUES,
+                            LAYER_TDOCU, LAYER_BDOCU, 125, 126 };
+                            // 2008-11-07 Layer 125, 126 is created by panalize.ulp.*/
+                    dlgGridLayout {
+                        dlgCell(0,0) dlgCheckBox("tPlace", process_tPlace);
+                        dlgCell(1,0) dlgCheckBox("bPlace", process_bPlace);
+                        dlgCell(2,0) dlgCheckBox("tNames", process_tNames);
+                        dlgCell(3,0) dlgCheckBox("bNames", process_bNames);
+                        dlgCell(4,0) dlgCheckBox("tValues", process_tValues);
+                        dlgCell(5,0) dlgCheckBox("bValues", process_bValues);
+                        
+                        dlgCell(0,1) dlgCheckBox("tDocu", process_tDocu);
+                        dlgCell(1,1) dlgCheckBox("bDocu", process_bDocu);
+                        dlgCell(2,1) dlgCheckBox("tNames by panelize.ulp (125)", process_tNames_panelize);
+                        dlgCell(3,1) dlgCheckBox("bNames by panelize.ulp (126)", process_bNames_panelize);
                     }
                 }
-                
-                dlgCell(2,0) dlgLabel("Text type:");
-                dlgCell(2,1) dlgComboBox(fontTypeOptions, selectedFontType);
             }
         }
+        
 
         // Buttons
         dlgHBoxLayout {
@@ -269,11 +321,13 @@ if (board) {
         text_ratio = text_thickness;
     else
         text_ratio = int(round((text_thickness / text_size) * 100.0)) + 1;
+
     if (text_ratio > 31) {
         text_ratio = 31;
         dlgMessageBox("!<qt><P><B>Ratio clipped to 31 !</B></P>"+
                       "<P>Make sure that text thickness is not too large for proper ratio.</P></qt>");
     }
+    
     if (fontSizeUnit == UNIT_MM) {
         if (text_size > 5.0) {
             text_size = 5.0;
@@ -295,14 +349,24 @@ if (board) {
     };
 
     // Execute script if it was accepted
-    if (!result)
+    if (!result) {
         exit(0);
-    else {
+    } else {
         INI_PutInteger(strlwr(get_ulp_name()),  "font_size_unit", fontSizeUnit, GetIniFileName());
         INI_PutInteger(strlwr(get_ulp_name()),  "font_weight_unit", fontWeightUnit, GetIniFileName());
         INI_PutInteger(strlwr(get_ulp_name()),  "text_size", text_size, GetIniFileName());
         INI_PutInteger(strlwr(get_ulp_name()),  "text_thickness", text_thickness, GetIniFileName());
         INI_PutInteger(strlwr(get_ulp_name()),  "font_type", selectedFontType, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_tPlace", process_tPlace, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_bPlace", process_bPlace, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_tNames", process_tNames, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_bNames", process_bNames, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_tValues", process_tValues, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_bValues", process_bValues, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_tDocu", process_tDocu, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_bDocu", process_bDocu, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_tNames_panelize", process_tNames_panelize, GetIniFileName());
+        INI_PutInteger(strlwr(get_ulp_name()),  "process_bNames_panelize", process_bNames_panelize, GetIniFileName());
         exit(cmd);
     }
 } else {
