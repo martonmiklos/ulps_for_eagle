@@ -71,3 +71,10 @@ Originally written by: Robert E. Starr (http://www.bobstarr.net)
 
 Modifications:
 - Save UI settings
+
+distribute_attributes.ulp
+=============
+This script can be used to copy all attributes from a specified part to the same parts in the design with the same value.
+It is useful if you set for e.g. an ordercode for a part (OC_***) and you would like to set it to all similar parts in the design.
+
+Invoke this script by typing 'RUN distribute_attributes <REFDES of the source part>' into the command interpreter").
