@@ -2,6 +2,11 @@ output("/tmp/foo.txt") {
     if (schematic) {
         string cmd;
         if (argc == 2)   {
+            int startingSheet = -1;
+            sheet(S) {
+                startingSheet = S.number;
+            }
+            
             schematic(SCH) {
                 UL_PART selectedDevice;
                 SCH.parts(PART) {
@@ -46,6 +51,7 @@ output("/tmp/foo.txt") {
                     }
                 }
             }
+            sprintf(cmd, "%sEDIT .s%d;\n", cmd, startingSheet);
             printf("%s\n", cmd);
             exit(cmd);
         } else {
