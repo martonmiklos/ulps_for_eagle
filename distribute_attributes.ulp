@@ -1,69 +1,75 @@
-output("/tmp/foo.txt") {
-    if (schematic) {
-        string cmd;
-        if (argc == 2)   {
-            int startingSheet = -1;
-            sheet(S) {
-                startingSheet = S.number;
+if (schematic) {
+    string cmd;
+    if (argc == 2)   {
+        int startingSheet = -1;
+        sheet(S) {
+            startingSheet = S.number;
+        }
+        
+        schematic(SCH) {
+        int found = 0;
+            UL_PART selectedDevice;
+            SCH.parts(PART) {
+                if (PART.name == argv[1]) {
+                    selectedDevice = PART;
+                    found = 1;
+                    break;
+                }
             }
             
-            schematic(SCH) {
-                UL_PART selectedDevice;
-                SCH.parts(PART) {
-                    if (PART.name == argv[1]) {
-                        selectedDevice = PART;
-                        break;
-                    }
-                }
-                
-                SCH.sheets(SHEET) {
-                    int lastSheet = -1;
-                    SHEET.parts(PART) {
-                        if (
-                            PART.name != selectedDevice.name &&
-                            PART.value == selectedDevice.value &&
-                            PART.deviceset.library == selectedDevice.deviceset.library &&
-                            PART.deviceset.name == selectedDevice.deviceset.name
-                        ) {
-                            selectedDevice.attributes(attr) {
-                                if (!attr.constant) {
-                                    if (lastSheet != SHEET.number) {
-                                        sprintf(cmd, "%sEDIT .s%d;\n", cmd, SHEET.number);
-                                        lastSheet = SHEET.number;
-                                    }
-                                    switch (attr.display) {
-                                    case  ATTRIBUTE_DISPLAY_FLAG_OFF:
-                                        sprintf(cmd, "%sCHANGE DISPLAY OFF;\n", cmd);
-                                        break;
-                                    case ATTRIBUTE_DISPLAY_FLAG_VALUE:
-                                        sprintf(cmd, "%sCHANGE DISPLAY VALUE;\n", cmd);
-                                        break;
-                                    case ATTRIBUTE_DISPLAY_FLAG_NAME :
-                                        sprintf(cmd, "%sCHANGE DISPLAY NAME;\n", cmd);
-                                        break;
-                                    }
-                                    // delete the attribute first to make sure not to get annoying popup
-                                    sprintf(cmd, "%sATTRIBUTE %s %s DELETE;\n", cmd, PART.name, attr.name);
-                                    sprintf(cmd, "%sATTRIBUTE %s %s '%s';\n", cmd, PART.name, attr.name, attr.value);
+            if (found != 1) {
+                string errorMessage;
+                sprintf(errorMessage, "Unable to find part with %s reference designator!", argv[1]);
+                dlgMessageBox(errorMessage);
+                exit(1);
+            }
+            
+            SCH.sheets(SHEET) {
+                int lastSheet = -1;
+                SHEET.parts(PART) {
+                    if (
+                        PART.name != selectedDevice.name &&
+                        PART.value == selectedDevice.value &&
+                        PART.deviceset.library == selectedDevice.deviceset.library &&
+                        PART.deviceset.name == selectedDevice.deviceset.name
+                    ) {
+                        selectedDevice.attributes(attr) {
+                            if (!attr.constant) {
+                                if (lastSheet != SHEET.number) {
+                                    sprintf(cmd, "%sEDIT .s%d;\n", cmd, SHEET.number);
+                                    lastSheet = SHEET.number;
                                 }
+                                switch (attr.display) {
+                                case  ATTRIBUTE_DISPLAY_FLAG_OFF:
+                                    sprintf(cmd, "%sCHANGE DISPLAY OFF;\n", cmd);
+                                    break;
+                                case ATTRIBUTE_DISPLAY_FLAG_VALUE:
+                                    sprintf(cmd, "%sCHANGE DISPLAY VALUE;\n", cmd);
+                                    break;
+                                case ATTRIBUTE_DISPLAY_FLAG_NAME :
+                                    sprintf(cmd, "%sCHANGE DISPLAY NAME;\n", cmd);
+                                    break;
+                                }
+                                // delete the attribute first to make sure not to get annoying popup
+                                sprintf(cmd, "%sATTRIBUTE %s %s DELETE;\n", cmd, PART.name, attr.name);
+                                sprintf(cmd, "%sATTRIBUTE %s %s '%s';\n", cmd, PART.name, attr.name, attr.value);
                             }
                         }
                     }
                 }
             }
-            sprintf(cmd, "%sEDIT .s%d;\n", cmd, startingSheet);
-            printf("%s\n", cmd);
-            exit(cmd);
-        } else {
-            dlgMessageBox("No arguments provided!\n\n"
-            "This script can be used to copy all attributes from a specified part\n"
-            "to the same parts (same device from the same library) in the design (with the same value).\n\n"
-            "Invoke this script by typing 'RUN distribute_attributes <REFDES of the source part>' into the command interpreter\n\n"
-            "<b>It will overwrite the existing attributes without any question!</b>");
-            exit(1);
         }
+        sprintf(cmd, "%sEDIT .s%d;\n", cmd, startingSheet);
+        exit(cmd);
     } else {
-        dlgMessageBox(":You must run this ULP in a schematic or in a board !");
+        dlgMessageBox("No arguments provided!\n\n"
+        "This script can be used to copy all attributes from a specified part\n"
+        "to the same parts (same device from the same library) in the design (with the same value).\n\n"
+        "Invoke this script by typing 'RUN distribute_attributes <REFDES of the source part>' into the command interpreter\n\n"
+        "<b>It will overwrite the existing attributes without any question!</b>");
         exit(1);
     }
+} else {
+    dlgMessageBox(":You must run this ULP in a schematic or in a board !");
+    exit(1);
 }
