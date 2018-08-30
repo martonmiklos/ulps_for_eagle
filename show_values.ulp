@@ -92,7 +92,7 @@ string InputBox(string strPrompt, string strTitle, string strDefault)
 
 int partWithValueFound=0;
 
-if(board) board(B)
+if (board) board(B)
 {
     showPartsOnSides = INI_GetInteger(strlwr(get_ulp_name()), B.name + "_side", ShowBothSides, GetIniFileName());
     if (showPartsOnSides > ShowBottomOnly)
@@ -168,7 +168,7 @@ if(board) board(B)
         exit("script " + "'"+strScript+"'" + ";");
     }
 }
-else if(sheet) sheet(S)
+else if(sheet) sheet(currentSheet)
 {
     string strName;
 
@@ -189,23 +189,25 @@ else if(sheet) sheet(S)
     {
         printf("#\n");
         //printf("window;\n\n");
-
-        S.parts(P)
-        {
-            if((strlwr(P.value) == strlwr(strValue)) && (partWithValueFound==0))
-            {
-                printf("show %s ", P.name);
-                partWithValueFound=1;
-                ++nCount;
-            }
-            else if((strlwr(P.value) == strlwr(strValue)) && (partWithValueFound==1))
-            {
-                printf(" %s ", P.name);
-                ++nCount;
+        schematic(SCH) {
+            SCH.sheets(S) {
+                S.parts(P) {
+                    if ((strlwr(P.value) == strlwr(strValue))) {
+                        if (partWithValueFound==0) {
+                            printf("show %s ", P.name);
+                            partWithValueFound=1;
+                        } else {
+                            printf(" %s ", P.name);
+                        }
+                        ++nCount;
+                    }
+                }
             }
         }
 
         //printf("\n;\n");
+        if (nCount)
+            printf(" @");
         printf("\nwindow\n\n");
     }
 
@@ -222,7 +224,7 @@ else if(sheet) sheet(S)
     }
     else
     {
-        exit("script " + "'"+strScript+"'" + ";");
+        //exit("script " + "'"+strScript+"'" + ";");
     }
 }
 else
