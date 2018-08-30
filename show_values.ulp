@@ -15,6 +15,7 @@
 #include "IniFile.ulp"
 
 enum { ShowTopOnly, ShowBothSides, ShowBottomOnly };
+enum { ShowThisPage, ShowOnAllPages };
 
 string strTexts[] =
 {
@@ -35,6 +36,7 @@ string strMessage;
 string strScript;
 int nCount;
 int showPartsOnSides = ShowBothSides;
+int showPartsOnPages = ShowOnAllPages;
 
 string Translate(string src)
 {
@@ -52,7 +54,7 @@ string GetScriptName(void)
     return filesetext(argv[0], ".scr");
 }
 
-string InputBox(string strPrompt, string strTitle, string strDefault)
+string InputBoxPCB(string strPrompt, string strTitle, string strDefault)
 {
     string strReturn = strDefault;
     int nResult = dlgDialog(strTitle)
@@ -90,6 +92,43 @@ string InputBox(string strPrompt, string strTitle, string strDefault)
     return((nResult > 0) ? strReturn : "");
 }
 
+string InputBoxSCH(string strPrompt, string strTitle, string strDefault)
+{
+    string strReturn = strDefault;
+    int nResult = dlgDialog(strTitle)
+    {
+        dlgGridLayout
+        {
+            dlgCell(0, 0)
+            {
+                dlgHBoxLayout
+                {
+                    dlgLabel(strPrompt);
+                    dlgSpacing(20);
+
+                    dlgGroup("Scope:") {
+                        dlgRadioButton("&This page", showPartsOnPages);
+                        dlgRadioButton("&All pages", showPartsOnPages);
+                    } 
+                    
+                    dlgVBoxLayout
+                    {
+                        dlgPushButton("+OK") dlgAccept();
+                        dlgPushButton("Cancel") dlgReject();
+                    }
+                }
+            }
+            
+            dlgCell(1, 0)
+            {
+                dlgStringEdit(strReturn);
+            }
+        }
+    };
+
+    return((nResult > 0) ? strReturn : "");
+}
+
 int partWithValueFound=0;
 
 if (board) board(B)
@@ -101,7 +140,7 @@ if (board) board(B)
     string strValue = "";
     if (argc == 1) {
         // No command line arguments, start the GUI
-        strValue = InputBox(Translate("Please type in the value you want to highlight."), get_ulp_name(), INI_GetString(strlwr(get_ulp_name()), B.name + "_value", "", GetIniFileName()));
+        strValue = InputBoxPCB(Translate("Please type in the value you want to highlight."), get_ulp_name(), INI_GetString(strlwr(get_ulp_name()), B.name + "_value", "", GetIniFileName()));
     } else {
         // command line arguments are handled in the following way:
         // first argument: part value, 
@@ -176,31 +215,50 @@ else if(sheet) sheet(currentSheet)
     {
         strName = SCH.name;
     }
+    
+    showPartsOnPages = INI_GetInteger(strlwr(get_ulp_name()), strName + "_pages", ShowOnAllPages, GetIniFileName());
+    if (showPartsOnSides > ShowOnAllPages)
+        showPartsOnSides = ShowOnAllPages;
 
-    string strValue = InputBox(Translate("Please type in the value you want to highlight."), get_ulp_name(), INI_GetString(strlwr(get_ulp_name()), strName, "", GetIniFileName()));
+    string strValue = InputBoxSCH(Translate("Please type in the value you want to highlight."), get_ulp_name(), INI_GetString(strlwr(get_ulp_name()), strName, "", GetIniFileName()));
 
-    if(strValue == "")
+    if (strValue == "")
         exit(EXIT_SUCCESS);
 
     INI_PutString(strlwr(get_ulp_name()), strName, strValue, GetIniFileName());
+    INI_PutInteger(strlwr(get_ulp_name()), strName + "_pages", showPartsOnPages, GetIniFileName());
     strScript = GetScriptName();
 
     output(strScript)
     {
         printf("#\n");
         //printf("window;\n\n");
-        schematic(SCH) {
-            SCH.sheets(S) {
-                S.parts(P) {
-                    if ((strlwr(P.value) == strlwr(strValue))) {
-                        if (partWithValueFound==0) {
-                            printf("show %s ", P.name);
-                            partWithValueFound=1;
-                        } else {
-                            printf(" %s ", P.name);
+        if (showPartsOnPages == ShowOnAllPages) {
+            schematic(SCH) {
+                SCH.sheets(S) {
+                    S.parts(P) {
+                        if ((strlwr(P.value) == strlwr(strValue))) {
+                            if (partWithValueFound==0) {
+                                printf("show %s ", P.name);
+                                partWithValueFound=1;
+                            } else {
+                                printf(" %s ", P.name);
+                            }
+                            ++nCount;
                         }
-                        ++nCount;
                     }
+                }
+            }
+        } else {
+            currentSheet.parts(P) {
+                if ((strlwr(P.value) == strlwr(strValue))) {
+                    if (partWithValueFound==0) {
+                        printf("show %s ", P.name);
+                        partWithValueFound=1;
+                    } else {
+                        printf(" %s ", P.name);
+                    }
+                    ++nCount;
                 }
             }
         }
@@ -212,19 +270,17 @@ else if(sheet) sheet(currentSheet)
     }
 
     if (!nCount) {
-        if (showPartsOnSides == ShowBothSides) {
+        if (showPartsOnPages == ShowOnAllPages) {
             sprintf(strMessage, Translate(";No elements found with value \"%s\"."), strValue);
-        } else if (showPartsOnSides == ShowTopOnly) {
-            sprintf(strMessage, Translate(";No elements found with value \"%s\" on the top side."), strValue);
-        } else if  (showPartsOnSides == ShowBottomOnly) {
-            sprintf(strMessage, Translate(";No elements found with value \"%s\" on the bottom side."), strValue);
+        } else if  (showPartsOnPages == ShowThisPage) {
+            sprintf(strMessage, Translate(";No elements found with value \"%s\" on the current sheet."), strValue);
         }
         dlgMessageBox(strMessage);
         exit(EXIT_FAILURE);
     }
     else
     {
-        //exit("script " + "'"+strScript+"'" + ";");
+        exit("script " + "'"+strScript+"'" + ";");
     }
 }
 else
