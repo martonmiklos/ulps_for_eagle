@@ -21,8 +21,11 @@
        "<p>"
        "<author>Author: Miklos Marton (martonmiklosqdev -at- gmail.com)</author>"
 
+string ULP_KEY = "CubeMX2EAGLE";
 #include "IniFile.ulp"
 #include "useful-routines.ulp"
+#include "config_utils.ulp"
+
 /**
 * str_replace
 *
@@ -47,9 +50,9 @@ string GetIniFileName(void)
 
 string ret = "";
 string partNames[];
-string iocFilePath = INI_GetString(strlwr(get_ulp_name()), "iocFilePath", EAGLE_HOME, GetIniFileName());
-string mcuRefDes = INI_GetString(strlwr(get_ulp_name()), "mcuRefDes", EAGLE_DIR + "/..", GetIniFileName());
-string cubeMXPath = INI_GetString(strlwr(get_ulp_name()), "cubeMXPath", "", GetIniFileName());
+string iocFilePath = cfgget_string("iocFilePath", EAGLE_HOME);
+string mcuRefDes = cfgget_string("mcuRefDes", "");
+string cubeMXPath = cfgget_string("cubeMXPath", "");
 
 schematic(SCH) {
     int i = 0;
@@ -210,8 +213,8 @@ if (pinNumberStr != "0") {
     exit(0);
 }
 
-INI_PutString(strlwr(get_ulp_name()),  "iocFilePath", iocFilePath, GetIniFileName());
-INI_PutString(strlwr(get_ulp_name()),  "mcuRefDes", mcuRefDes, GetIniFileName());
-INI_PutString(strlwr(get_ulp_name()),  "cubeMXPath", cubeMXPath, GetIniFileName());
+cfgset_string("iocFilePath", iocFilePath);
+cfgset_string("mcuRefDes", mcuRefDes);
+cfgset_string("cubeMXPath", cubeMXPath);
 
 exit(ret);
