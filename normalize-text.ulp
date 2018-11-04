@@ -22,79 +22,141 @@
 
 #require 5.0300;
 
-#include "IniFile.ulp"
-#include "useful-routines.ulp"
 
+string ULP_KEY = "NormalizeText";
 
-//string VERSION = "1.1";  // 2008-11-07 alf@cadsoft.de
-string VERSION = "1.3";  // 2017-10-11 martonmiklosqdev@gmail.com
-
-string GetIniFileName(void)
+int cfgget_int(string key, int defaultValue)
 {
-    return filesetext(argv[0], ".ini");
+    string tmp;
+    sprintf(key, "%s.%s", ULP_KEY, key);
+    sprintf(tmp, "%d", defaultValue);
+    return strtol(cfgget(key, tmp));
 }
 
+real cfgget_real(string key, real defaultValue)
+{
+    string tmp;
+    sprintf(key, "%s.%s", ULP_KEY, key);
+    sprintf(tmp, "%f", defaultValue);
+    return strtod(cfgget(key, tmp));
+}
 
+void cfgset_int(string key, int value)
+{
+    string tmp;
+    sprintf(key, "%s.%s", ULP_KEY, key);
+    sprintf(tmp, "%d", value);
+    cfgset(key, tmp);
+}
+
+void cfgset_real(string key, real value)
+{
+    string tmp;
+    sprintf(key, "%s.%s", ULP_KEY, key);
+    sprintf(tmp, "%f", value);
+    cfgset(key, tmp);
+}
+
+string VERSION = "1.4";  // 2018-11-03 martonmiklosqdev@gmail.com
+
+enum {UNIT_MIL, UNIT_MM, UNIT_PERCENTAGE, UNIT_INVALID};
+
+int  textSizeUnit;
+real textSize;
+
+real textThickness;
+int  textThicknessUnit;
+
+int text_ratio; // Calculated text ratio
+
+enum {LEAVE_FONT_AS_IS, SET_VECTOR_FONT, SET_PROPORTIONAL_FONT, SET_FIXED_FONT};
+string fontTypeOptions[] = { "Leave as is", "Vector", "Proportional", "Fixed" };
+int selectedFontType;
+
+string textSizeUnitOptions[] = {"mil", "mm"};
+string textThicknessUnitOptions[] = {"mil", "mm", "%"};
+
+
+int silk_screen_layers[] = {
+    // schematic layers
+    LAYER_NAMES,
+    LAYER_VALUES,
+    // board layers
+    LAYER_TPLACE, 
+    LAYER_BPLACE, 
+    LAYER_TNAMES,
+    LAYER_BNAMES, 
+    LAYER_TVALUES, 
+    LAYER_BVALUES,
+    LAYER_TDOCU, 
+    LAYER_BDOCU, 
+    // 2008-11-07 Layer 125, 126 is created by panalize.ulp.
+    125, 
+    126
+};
+
+int actualvisible = 0;
+
+int process_tPlace = cfgget_int("process_tPlace", 1);
+int process_bPlace = cfgget_int("process_tPlace", 1);
+int process_tNames = cfgget_int("process_tNames", 1);
+int process_bNames = cfgget_int("process_bNames", 1);
+int process_tValues = cfgget_int("process_tValues", 1);
+int process_bValues = cfgget_int("process_bValues", 1);
+int process_tDocu = cfgget_int("process_tDocu", 1);
+int process_bDocu = cfgget_int("process_bDocu", 1);
+int process_tNames_panelize = cfgget_int("process_tNames_panelize", 1);
+int process_bNames_panelize = cfgget_int("process_bNames_panelize", 1);
+int process_Names = cfgget_int("process_Names", 1);
+int process_Values = cfgget_int("process_Values", 1);
 
 int result = 0; // Dialog result
 
+void saveSchConfig() 
+{
+    cfgset_real("sch_textSize", textSize);
+    cfgset_int("sch_textSizeUnit", textSizeUnit);
+    
+    cfgset_real("sch_textThickness", textThickness);
+    cfgset_int("sch_textThicknessUnit", textThicknessUnit);
+    
+    cfgset_int("sch_selectedFontType", selectedFontType);
+    
+    cfgset_int("process_Names", process_Names);
+    cfgset_int("process_Values", process_Values);
+}
+
+void saveBrdConfig()
+{
+    printf("saveBrdConfig %d\n", textSizeUnit);
+    cfgset_real("textSize", textSize);
+    cfgset_int("textSizeUnit", textSizeUnit);
+    
+    cfgset_real("textThickness", textThickness);
+    cfgset_int("textThicknessUnit", textThicknessUnit);
+    
+    cfgset_int("selectedFontType", selectedFontType);
+    cfgset_int("process_tPlace", process_tPlace);
+    cfgset_int("process_bPlace", process_bPlace);
+    cfgset_int("process_tNames", process_tNames);
+    cfgset_int("process_bNames", process_bNames);
+    cfgset_int("process_tValues", process_tValues);
+    cfgset_int("process_bValues", process_bValues);
+    cfgset_int("process_tDocu", process_tDocu);
+    cfgset_int("process_bDocu", process_bDocu);
+    cfgset_int("process_tNames_panelize", process_tNames_panelize);
+    cfgset_int("process_bNames_panelize", process_bNames_panelize);
+}
+
 string str; // Temporary string
 string cmd = "SET UNDO_LOG OFF;\n"; // Script command to execute
-real text_size = 40.0; // Text size for all texts
-real text_thickness = 8.0; // Text thickness for all texts
-int text_ratio; // Calculated text ratio
-
-int silk_screen_layers[] = {LAYER_TPLACE, LAYER_BPLACE, LAYER_TNAMES,
-                            LAYER_BNAMES, LAYER_TVALUES, LAYER_BVALUES,
-                            LAYER_TDOCU, LAYER_BDOCU, 125, 126 };
-                            // 2008-11-07 Layer 125, 126 is created by panalize.ulp.
-                            
-int process_tPlace = INI_GetInteger(strlwr(get_ulp_name()), "process_tPlace", 1, GetIniFileName());
-int process_bPlace = INI_GetInteger(strlwr(get_ulp_name()), "process_tPlace", 1, GetIniFileName());
-int process_tNames = INI_GetInteger(strlwr(get_ulp_name()), "process_tNames", 1, GetIniFileName());
-int process_bNames = INI_GetInteger(strlwr(get_ulp_name()), "process_bNames", 1, GetIniFileName());
-int process_tValues = INI_GetInteger(strlwr(get_ulp_name()), "process_tValues", 1, GetIniFileName());
-int process_bValues = INI_GetInteger(strlwr(get_ulp_name()), "process_bValues", 1, GetIniFileName());
-int process_tDocu = INI_GetInteger(strlwr(get_ulp_name()), "process_tDocu", 1, GetIniFileName());
-int process_bDocu = INI_GetInteger(strlwr(get_ulp_name()), "process_bDocu", 1, GetIniFileName());
-int process_tNames_panelize = INI_GetInteger(strlwr(get_ulp_name()), "process_tNames_panelize", 1, GetIniFileName());
-int process_bNames_panelize = INI_GetInteger(strlwr(get_ulp_name()), "process_bNames_panelize", 1, GetIniFileName());
-
-enum {UNIT_MIL, UNIT_MM, UNIT_PERCENTAGE};
-int  fontSizeUnit = INI_GetInteger(strlwr(get_ulp_name()), "font_size_unit", UNIT_MIL, GetIniFileName());
-if (fontSizeUnit > UNIT_MM)
-    fontSizeUnit = UNIT_MIL;
-
-int  lastunit = fontSizeUnit;
-
-int  fontWeightUnit = INI_GetInteger(strlwr(get_ulp_name()), "font_weight_unit", UNIT_PERCENTAGE, GetIniFileName());
-if (fontWeightUnit > UNIT_PERCENTAGE)
-    fontWeightUnit = UNIT_PERCENTAGE;
-int  lastFontWeightUnit = fontWeightUnit;
-
-text_size = INI_GetInteger(strlwr(get_ulp_name()), "text_size", 1.0, GetIniFileName());
-text_thickness = INI_GetInteger(strlwr(get_ulp_name()), "text_thickness", 0.1, GetIniFileName());;
-enum {LEAVE_FONT_AS_IS, SET_VECTOR_FONT, SET_PROPORTIONAL_FONT, SET_FIXED_FONT};
-string fontTypeOptions[] = { "Leave as is", "Vector", "Proportional", "Fixed" };
-
-int selectedFontType =  INI_GetInteger(strlwr(get_ulp_name()), "font_type", LEAVE_FONT_AS_IS, GetIniFileName());
-if (selectedFontType > SET_FIXED_FONT)
-    selectedFontType = LEAVE_FONT_AS_IS;
-
-string fontSizeUnitOptions[] = {"mil", "mm"};
-string fontWeightUnitOptions[] = {"mil", "mm", "%"};
-
-int   visibleLayer[];
-int   actualvisible = 0;
-
-
 /* ------------- UTILITY FUNCTIONS --------------- */
 
 //
 // Redisplays the layers that were visible when the ULP was started
 //
-
-void ResetVisible(UL_BOARD B) {
+void ResetVisibleBrd(UL_BOARD B) 
+{
     sprintf(str, "DISP NONE;\nDISP ");
     cmd += str;
     B.layers(L) {
@@ -106,11 +168,26 @@ void ResetVisible(UL_BOARD B) {
     cmd += ";\n";
 }
 
+void ResetVisibleSch(UL_SCHEMATIC S) 
+{
+    sprintf(str, "DISP NONE;\nDISP ");
+    cmd += str;
+    S.layers(L) {
+        if (L.visible) {
+            sprintf(str, "%d ", L.number);
+            cmd += str;
+        }
+    }
+    cmd += ";\n";
+}
+
+
 
 //
-// Returns 1 if a layer is a silkscreen layer
+// Returns 1 if the layer is selected
 //
-int SilkScreenText(int layer) {
+int layerEnabled(int layer) 
+{
     int i = 0;
     int found = 0;
     
@@ -125,6 +202,8 @@ int SilkScreenText(int layer) {
     case LAYER_BDOCU: if (!process_bDocu) return 0; break;
     case 125: if (!process_tNames_panelize) return 0; break;
     case 126: if (!process_bNames_panelize) return 0; break;
+    case LAYER_NAMES: if (!process_Names) return 0; break;
+    case LAYER_VALUES: if (!process_Values) return 0; break;
     }
     
     do {    // 2008-11-07
@@ -146,17 +225,19 @@ int SilkScreenText(int layer) {
 //
 // Resizes a text element to the specified size and ratio
 //
-void ProcessText(UL_TEXT T, real size, int ratio, int action) {
-    if (SilkScreenText(T.layer)) {
-        switch (fontSizeUnit) {
-            case UNIT_MIL:
-                sprintf(str,"CHANGE SIZE %.4f (%.4f %.4f);\nCHANGE RATIO %d (%.4f %.4f);\n",
-                        size, u2mil(T.x), u2mil(T.y), ratio, u2mil(T.x), u2mil(T.y));
-                break;
-            case UNIT_MM:
-                sprintf(str,"CHANGE SIZE %.4f (%.4f %.4f);\nCHANGE RATIO %d (%.4f %.4f);\n",
-                        size, u2mm(T.x), u2mm(T.y), ratio, u2mm(T.x), u2mm(T.y));
-                break;
+void ProcessText(UL_TEXT T, real size, int ratio, int action) 
+{
+    cmd += "WINDOW FIT;\n";
+    if (layerEnabled(T.layer)) {
+        switch (textSizeUnit) {
+        case UNIT_MIL:
+            sprintf(str,"CHANGE SIZE %.4f (%.4f %.4f);\nCHANGE RATIO %d (%.4f %.4f);\n",
+                    size, u2mil(T.x), u2mil(T.y), ratio, u2mil(T.x), u2mil(T.y));
+            break;
+        case UNIT_MM:
+            sprintf(str,"CHANGE SIZE %.4f (%.4f %.4f);\nCHANGE RATIO %d (%.4f %.4f);\n",
+                    size, u2mm(T.x), u2mm(T.y), ratio, u2mm(T.x), u2mm(T.y));
+            break;
         }
         cmd += str;
         
@@ -174,7 +255,7 @@ void ProcessText(UL_TEXT T, real size, int ratio, int action) {
             font = "VECTOR";
             break;
         }
-        switch (fontSizeUnit) {
+        switch (textSizeUnit) {
             case UNIT_MIL:
                 sprintf(str,"CHANGE FONT %s (%.4f %.4f);\n",
                         font, u2mil(T.x), u2mil(T.y));
@@ -184,7 +265,6 @@ void ProcessText(UL_TEXT T, real size, int ratio, int action) {
                         font, u2mm(T.x), u2mm(T.y));
                 break;
         }
-        
         cmd += str;
     }
 }
@@ -193,9 +273,9 @@ void ProcessText(UL_TEXT T, real size, int ratio, int action) {
 // Smashes all parts that have an associated package on the board and resize
 // all text to SIZE and RATIO.
 //
-void ProcessTexts(real size, int ratio) {
+void ProcessBrdTexts(real size, int ratio, int fontType) {
     // Display the origins of components
-    switch (fontSizeUnit) {
+    switch (textSizeUnit) {
         case UNIT_MIL:
             sprintf(str,"GRID MIL 1;\n");
             break;
@@ -210,70 +290,223 @@ void ProcessTexts(real size, int ratio) {
     board(B) {
         B.elements(E) {
             if (E.package) {
-                // Smash the package to make sure text is CHANGE-able
-                sprintf(str,"SMASH %s;\n", E.name);
-                cmd += str;
+                if (!E.smashed) {
+                    // do not resmash the part since 9.2 the smash of the smashed part will reposition the text
+                    sprintf(str,"SMASH %s;\n", E.name);
+                    cmd += str;
+                }
                 // Change smashed texts
                 E.texts(T) {
-                    ProcessText(T, size, ratio, selectedFontType);
+                    ProcessText(T, size, ratio, fontType);
                 }
 
                 // Change unsmashed texts
                 E.package.texts(T) {
-                    ProcessText(T, size, ratio, selectedFontType);
+                    ProcessText(T, size, ratio, fontType);
                 }
             }
         }
 
         // Change all manually-added texts
         B.texts(T) {
-            ProcessText(T, size, ratio, selectedFontType);
+            ProcessText(T, size, ratio, fontType);
         }
 
-        ResetVisible(B);
+        ResetVisibleBrd(B);
     }
-    cmd += "GRID LAST;\nSET UNDO_LOG ON;\n";
+    cmd += "SET UNDO_LOG ON;\nGRID LAST;\n";
 }
 
+//
+// Smashes all parts that have an associated package on the board and resize
+// all text to SIZE and RATIO.
+//
+void ProcessSchTexts(real size, int ratio, int fontType) 
+{
+    // Display the origins of components
+    switch (textSizeUnit) {
+        case UNIT_MIL:
+            sprintf(str,"GRID MIL 1;\n");
+            break;
+        case UNIT_MM:
+            sprintf(str,"GRID MM 0.1;\n");
+            break;
+    }
+    cmd += str;
+    
+    schematic(SCH) {
+        SCH.sheets(S) {
+            sprintf(cmd, "EDIT .s%d;\n", S.number);
+            cmd += str;
+            S.instances(E) {
+                if (!E.smashed) {
+                    // do not resmash the part since 9.2 the smash of the smashed part will reposition the text
+                    sprintf(str,"SMASH %s;\n", E.name);
+                    cmd += str;
+                }
+                E.texts(T) {
+                    ProcessText(T, size, ratio, fontType);
+                }
+                
+                E.gate.symbol.texts(T) {
+                    ProcessText(T, size, ratio, fontType);
+                }
+            }
+            
+            // Change all manually-added texts to the selected layers
+            S.texts(T) {
+                ProcessText(T, size, ratio, fontType);
+            }
+            
+            S.nets(N) {
+                N.segments(SEG) {
+                    SEG.labels(label) {
+                        ProcessText(label.text, size, ratio, fontType);
+                    }
+                }
+            }
+            
+            ResetVisibleSch(SCH);
+            string unit = "";
+            switch (SCH.grid.unit) {
+            case GRID_UNIT_MIC: unit = "microns"; break;
+            case GRID_UNIT_MM : unit = "millimeter"; break;
+            case GRID_UNIT_MIL: unit = "mil"; break;
+            case GRID_UNIT_INCH: unit = "inch"; break;
+            }
+            sprintf(str, "GRID %s %f;\n", unit, SCH.grid.distance);
+            cmd += str;
+        }
+    }
+    cmd += "SET UNDO_LOG ON;\n";
+}
+
+output("/tmp/foo.txt", "wt") {
 /* ------------- MAIN ROUTINE --------------- */
 if (board) {
-    int actsize;
-    result = dlgDialog("Normalize silkscreen text sizes") {
+    int visibleLayers[];
+    int textSizeInU, textThicknessInU;
+    
+    textSize = cfgget_real("textSize", 1.0);
+    
+    textSizeUnit = cfgget_int("textSizeUnit", UNIT_MM);
+    if (textSizeUnit > UNIT_MM)
+        textSizeUnit = UNIT_MIL;
+    int lastTextSizeUnit = textSizeUnit;
+    
+    textThickness = cfgget_real("textThickness", 0.1);
+    textThicknessUnit = cfgget_int("textThicknessUnit", UNIT_PERCENTAGE);
+    if (textThicknessUnit > UNIT_PERCENTAGE)
+        textThicknessUnit = UNIT_PERCENTAGE;
+    int  lastTextThicknessUnit = textThicknessUnit;
+
+    switch (textSizeUnit) {
+    case UNIT_MIL:
+        textSizeInU = mil2u(textSize);
+        break;
+    case UNIT_MM:
+        textSizeInU = mm2u(textSize);
+        break;
+    }
+    
+    switch (textThicknessUnit) {
+    case UNIT_MIL:
+        textThicknessInU = mil2u(textThickness);
+        break;
+    case UNIT_MM:
+        textThicknessInU = mm2u(textThickness);
+        break;
+    case UNIT_PERCENTAGE:
+        switch (textSizeUnit) {
+        case UNIT_MIL:
+            textThicknessInU = textThickness * mil2u(textSize);
+            break;
+        case UNIT_MM:
+            textThicknessInU = textThickness * mm2u(textSize);
+            break;
+        }
+        break;
+    }
+    
+    selectedFontType = cfgget_int("selectedFontType", LEAVE_FONT_AS_IS);
+    if (selectedFontType > SET_FIXED_FONT)
+        selectedFontType = LEAVE_FONT_AS_IS;
+    
+    result = dlgDialog("Normalize text sizes") {
         sprintf(str,"<qt><H3><P>Normalize silkscreen text sizes %s</P></H3>"+
                     "<P><B>By Tennessee Carmel-Veilleux (veilleux@ameth.org)</B></P>"+
                     "<HR><P>This ULP normalizes all the text on the silkscreen layers to "+
                     "the specified size and thickness. The ratio is automatically calculated " +
                     "from the size and thickness.</P></qt>", VERSION);
         dlgLabel(str);
-
         dlgTabWidget {
             dlgTabPage("Options") {
                 // Options
                 dlgHBoxLayout {
                     dlgSpacing(20);
-                    
                     dlgGridLayout {
                         dlgCell(0,0) dlgLabel("Text size:");
-                        dlgCell(0,1) dlgRealEdit(text_size,0.1,2000.0);
-                        dlgCell(0,2) dlgComboBox(fontSizeUnitOptions, fontSizeUnit) {
-                            if (lastunit != fontSizeUnit) {
-                                actsize = text_size*10000;    // 2008-11-07 calculate the value in changed unit
-                                text_size = u2mil(actsize);
-                                actsize = text_thickness*10000;
-                                text_thickness = u2mil(actsize);
-                                lastunit = fontSizeUnit;
+                        dlgCell(0,1) dlgRealEdit(textSize, 0, 2000.0)
+                        dlgCell(0,2) dlgComboBox(textSizeUnitOptions, textSizeUnit) {
+                            if (lastTextSizeUnit != textSizeUnit) {
+                                switch (lastTextSizeUnit) {
+                                case UNIT_MIL:
+                                    textSizeInU = mil2u(textSize);
+                                    break;
+                                case UNIT_MM:
+                                    textSizeInU = mm2u(textSize);
+                                    break;
+                                }
+                                
+                                switch (textSizeUnit) {
+                                case UNIT_MIL:
+                                    textSize = u2mil(textSizeInU);
+                                    break;
+                                case UNIT_MM:
+                                    textSize = u2mm(textSizeInU);
+                                    break;
+                                }
+                                lastTextSizeUnit = textSizeUnit;
                             }
                         }
 
                         dlgCell(1,0) dlgLabel("Text Thickness:");
-                        dlgCell(1,1) dlgRealEdit(text_thickness,0.01,500.0);
-                        dlgCell(1,2) dlgComboBox(fontWeightUnitOptions, fontWeightUnit) {
-                            if (lastFontWeightUnit != fontWeightUnit) {
-                                actsize = text_size*10000;    // 2008-11-07 calculate the value in changed unit
-                                text_size = u2mil(actsize);
-                                actsize = text_thickness*10000;
-                                text_thickness = u2mil(actsize);
-                                lastFontWeightUnit = fontWeightUnit;
+                        dlgCell(1,1) dlgRealEdit(textThickness, 0, 500.0);
+                        dlgCell(1,2) dlgComboBox(textThicknessUnitOptions, textThicknessUnit) {
+                            if (lastTextThicknessUnit != textThicknessUnit) {
+                                printf("%d -> %d\n", lastTextThicknessUnit, textThicknessUnit);
+                                switch (lastTextThicknessUnit) {
+                                case UNIT_MIL:
+                                    textThicknessInU = mil2u(textThickness);
+                                    break;
+                                case UNIT_MM:
+                                    textThicknessInU = mm2u(textThickness);
+                                    break;
+                                case UNIT_PERCENTAGE:
+                                    switch (textSizeUnit) {
+                                    case UNIT_MIL:
+                                        textThicknessInU = textThickness * mil2u(textSize);
+                                        break;
+                                    case UNIT_MM:
+                                        textThicknessInU = textThickness * mm2u(textSize);
+                                        break;
+                                    }
+                                    break;
+                                }
+                                printf("%d\n", textThicknessInU);
+                                
+                                switch (textThicknessUnit) {
+                                case UNIT_MIL:
+                                    textThickness = u2mil(textThicknessInU);
+                                    break;
+                                case UNIT_MM:
+                                    textThickness = u2mm(textThicknessInU);
+                                    break;
+                                case UNIT_PERCENTAGE:
+                                    textThickness = (textThicknessInU / textSizeInU) * 100.0;
+                                    break;
+                                }
+                                lastTextThicknessUnit = textThicknessUnit;
                             }
                         }
                         
@@ -284,11 +517,6 @@ if (board) {
             }
             dlgTabPage("Layers") {
                 dlgHBoxLayout {
-                    /*
-                    int silk_screen_layers[] = {LAYER_TPLACE, LAYER_BPLACE, LAYER_TNAMES,
-                            LAYER_BNAMES, LAYER_TVALUES, LAYER_BVALUES,
-                            LAYER_TDOCU, LAYER_BDOCU, 125, 126 };
-                            // 2008-11-07 Layer 125, 126 is created by panalize.ulp.*/
                     dlgGridLayout {
                         dlgCell(0,0) dlgCheckBox("tPlace", process_tPlace);
                         dlgCell(1,0) dlgCheckBox("bPlace", process_bPlace);
@@ -315,12 +543,15 @@ if (board) {
         }
     };
 
-    if (!result) exit(0);
+    if (!result) {
+        saveBrdConfig();
+        exit(0);
+    }
 
-    if (fontWeightUnit == UNIT_PERCENTAGE) 
-        text_ratio = text_thickness;
+    if (textThicknessUnit == UNIT_PERCENTAGE) 
+        text_ratio = textThickness;
     else
-        text_ratio = int(round((text_thickness / text_size) * 100.0)) + 1;
+        text_ratio = int(round((textThickness / textSize) * 100.0)) + 1;
 
     if (text_ratio > 31) {
         text_ratio = 31;
@@ -328,13 +559,7 @@ if (board) {
                       "<P>Make sure that text thickness is not too large for proper ratio.</P></qt>");
     }
     
-    if (fontSizeUnit == UNIT_MM) {
-        if (text_size > 5.0) {
-            text_size = 5.0;
-            dlgMessageBox("!<qt><P><B>Text size clipped to 5.0mm !</B></P></qt>");
-        }
-    }
-    ProcessTexts(text_size, text_ratio);
+    ProcessBrdTexts(textSize, text_ratio, selectedFontType);
 
     //  EditBox
     result = dlgDialog("Edit and execute script") {
@@ -350,26 +575,178 @@ if (board) {
 
     // Execute script if it was accepted
     if (!result) {
+        saveBrdConfig();
         exit(0);
     } else {
-        INI_PutInteger(strlwr(get_ulp_name()),  "font_size_unit", fontSizeUnit, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "font_weight_unit", fontWeightUnit, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "text_size", text_size, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "text_thickness", text_thickness, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "font_type", selectedFontType, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_tPlace", process_tPlace, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_bPlace", process_bPlace, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_tNames", process_tNames, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_bNames", process_bNames, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_tValues", process_tValues, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_bValues", process_bValues, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_tDocu", process_tDocu, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_bDocu", process_bDocu, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_tNames_panelize", process_tNames_panelize, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()),  "process_bNames_panelize", process_bNames_panelize, GetIniFileName());
+        saveBrdConfig();
+        exit(cmd);
+    }
+} else if (schematic) {
+    int textSizeInU, textThicknessInU;
+    textSize = cfgget_real("sch_textSize", 70);
+    
+    textSizeUnit = cfgget_int("sch_textSizeUnit", UNIT_MIL);
+    if (textSizeUnit > UNIT_MM)
+        textSizeUnit = UNIT_MIL;
+    int lastTextSizeUnit = textSizeUnit;
+    
+    textThickness = cfgget_real("sch_textThickness", 10);
+    textThicknessUnit = cfgget_int("sch_textThicknessUnit", UNIT_PERCENTAGE);
+    if (textThicknessUnit > UNIT_PERCENTAGE)
+        textThicknessUnit = UNIT_PERCENTAGE;
+    int  lastTextThicknessUnit = textThicknessUnit;
+
+    switch (textSizeUnit) {
+    case UNIT_MIL:
+        textSizeInU = mil2u(textSize);
+        break;
+    case UNIT_MM:
+        textSizeInU = mm2u(textSize);
+        break;
+    }
+
+    selectedFontType = cfgget_int("sch_selectedFontType", LEAVE_FONT_AS_IS);
+    if (selectedFontType > SET_FIXED_FONT)
+        selectedFontType = LEAVE_FONT_AS_IS;
+    
+    result = dlgDialog("Normalize text sizes") {
+        sprintf(str,"<qt><H3><P>Normalize schematic text sizes %s</P></H3>"+
+                    "<P><B>By Miklos Marton (martonmiklosqdev@gmail.com)</B></P>"+
+                    "<HR><P>This ULP normalizes all the text on the name/values layers to "+
+                    "the specified size and thickness. The ratio is automatically calculated " +
+                    "from the size and thickness.</P></qt>", VERSION);
+        dlgLabel(str);
+
+        dlgTabWidget {
+            dlgTabPage("Options") {
+                // Options
+                dlgHBoxLayout {
+                    dlgSpacing(20);
+                    
+                    dlgGridLayout {
+                        dlgCell(0,0) dlgLabel("Text size:");
+                        dlgCell(0,1) dlgRealEdit(textSize, 0, 2000);
+                        dlgCell(0,2) dlgComboBox(textSizeUnitOptions, textSizeUnit) {
+                            if (lastTextSizeUnit != textSizeUnit) {
+                                switch (lastTextSizeUnit) {
+                                case UNIT_MIL:
+                                    textSizeInU = mil2u(textSize);
+                                    break;
+                                case UNIT_MM:
+                                    textSizeInU = mm2u(textSize);
+                                    break;
+                                }
+                                
+                                switch (textSizeUnit) {
+                                case UNIT_MIL:
+                                    textSize = u2mil(textSizeInU);
+                                    break;
+                                case UNIT_MM:
+                                    textSize = u2mm(textSizeInU);
+                                    break;
+                                }
+                                lastTextSizeUnit = textSizeUnit;
+                            }
+                        }
+
+                        dlgCell(1,0) dlgLabel("Text Thickness:");
+                        dlgCell(1,1) dlgRealEdit(textThickness,0.0, 500.0);
+                        dlgCell(1,2) dlgComboBox(textThicknessUnitOptions, textThicknessUnit) {
+                            if (lastTextThicknessUnit != textThicknessUnit) {
+                                printf("%d -> %d\n", lastTextThicknessUnit, textThicknessUnit);
+                                switch (lastTextThicknessUnit) {
+                                case UNIT_MIL:
+                                    textThicknessInU = mil2u(textThickness);
+                                    break;
+                                case UNIT_MM:
+                                    textThicknessInU = mm2u(textThickness);
+                                    break;
+                                case UNIT_PERCENTAGE:
+                                    switch (textSizeUnit) {
+                                    case UNIT_MIL:
+                                        textThicknessInU = textThickness * mil2u(textSize);
+                                        break;
+                                    case UNIT_MM:
+                                        textThicknessInU = textThickness * mm2u(textSize);
+                                        break;
+                                    }
+                                    break;
+                                }
+                                printf("%d\n", textThicknessInU);
+                                
+                                switch (textThicknessUnit) {
+                                case UNIT_MIL:
+                                    textThickness = u2mil(textThicknessInU);
+                                    break;
+                                case UNIT_MM:
+                                    textThickness = u2mm(textThicknessInU);
+                                    break;
+                                case UNIT_PERCENTAGE:
+                                    textThickness = (textThicknessInU / textSizeInU) * 100.0;
+                                    break;
+                                }
+                                lastTextThicknessUnit = textThicknessUnit;
+                            }
+                        }
+                        
+                        dlgCell(2,0) dlgLabel("Text type:");
+                        dlgCell(2,1) dlgComboBox(fontTypeOptions, selectedFontType);
+                    }
+                }
+            }
+            dlgTabPage("Layers") {
+                dlgHBoxLayout {
+                    dlgGridLayout {
+                        dlgCell(0,0) dlgCheckBox("Names", process_Names);
+                        dlgCell(1,0) dlgCheckBox("Values", process_Values);
+                    }
+                }
+            }
+        }
+        
+
+        // Buttons
+        dlgHBoxLayout {
+            dlgStretch(1);
+            dlgPushButton("+Normalize") dlgAccept();
+            dlgPushButton("-Cancel") dlgReject();
+        }
+    };
+
+    if (!result) {
+        saveSchConfig();
+        exit(0);
+    }
+
+    if (textThicknessUnit == UNIT_PERCENTAGE) 
+        text_ratio = textThickness;
+    else
+        text_ratio = int(round((textThickness / textSize) * 100.0)) + 1;
+    
+    ProcessSchTexts(textSize, text_ratio, selectedFontType);
+
+    //  EditBox
+    result = dlgDialog("Edit and execute script") {
+        dlgHBoxLayout {
+            dlgSpacing(500); // Force width of dialog to 500
+        }
+        dlgTextEdit(cmd);
+        dlgHBoxLayout {
+            dlgPushButton("+Execute") dlgAccept();
+            dlgPushButton("-Cancel") dlgReject();
+        }
+    };
+
+    // Execute script if it was accepted
+    if (!result) {
+        saveSchConfig();
+        exit(0);
+    } else {
+        saveSchConfig();
         exit(cmd);
     }
 } else {
-    dlgMessageBox(":You must run this ULP in board !");
+    dlgMessageBox(":You must run this ULP in a schematic or in a board !");
     exit(1);
+}
 }
