@@ -48,9 +48,9 @@ This ULP can be used programatically change all silkscreen texts to a specified 
 
 Modifications added by me:
 * Ability to set font type
-* Saving settings to INI file
+* Saving settings
 * Implement layer selection
-
+* Add support for normalize the name/value texts in the schematic as well the net labels
 
 generate_header_direction
 =============
