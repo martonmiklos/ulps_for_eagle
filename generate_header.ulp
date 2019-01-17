@@ -206,7 +206,7 @@ output(filePath, "wt") {
         string regexp; 
         char defaultPortDirection;
         if (outputType == PIC_XC) {
-            regexp = "R([A-Z])([0-7])(.*)"; // PIC libraries usually names the pins as RD7 style (PORTD7)
+            regexp = "R([A-Z])([0-7]*)(.*)"; // PIC libraries usually names the pins as RD7 style (PORTD7)
             defaultPortDirection = DirectionDefaultPIC; 
             printf("#include <xc.h>\n\n");
         } else if (outputType == AVR_libc) {
@@ -221,10 +221,10 @@ output(filePath, "wt") {
                 if (P.instance.name == mcuRefDes) { // if this pinref is belongs to our device
                     int matchPosition = strxstr(P.pin.name, regexp, 0);
                     if (matchPosition != -1) { // check that this pin belongs to a port (not VCC, GND, OSC/whatever else)
+                        string pinNumber = strsub(P.pin.name, 2);
+                        string pinName = P.pin.name;
+                        char portLetter = pinName[1];
                         string netName = N.name;
-                        string subString = strsub(P.pin.name, matchPosition+1, 1); // extract the port letter (D in the case of RD7 or PD7)
-                        char pinNumber = subString[0];
-                        char portLetter = subString[0];
                         
                         if (outputType != nRF) { 
                             /* if there were not any nets connected to the current port 
@@ -232,7 +232,7 @@ output(filePath, "wt") {
                             if (portDirections[portLetter-'A'] == -1)
                                 portDirections[portLetter-'A'] = defaultPortDirection;                        
                             
-                            subString = strsub(P.pin.name, matchPosition+2, 1);
+                            string subString = strsub(P.pin.name, matchPosition+2, 1);
                             // replace the ! symbol in the negated netnames since the c compiler does not allows to use it in a constant name
                             if (strchr(netName, '!') == 0) {  
                                 sprintf(netName, "n%s", strsub(netName, 1));
@@ -243,9 +243,9 @@ output(filePath, "wt") {
                             if (outputType == AVR_libc) {
                                 printf("#define %s_PORT   PORT%c\n", netName, portLetter);
                                 printf("#define %s_PINREG PIN%c\n", netName, portLetter);
-                                printf("#define %s_PIN    %c\n", netName, pinNumber);
+                                printf("#define %s_PIN    %s\n", netName, pinNumber);
                                 printf("#define %s_DDR    DDR%c\n", netName, portLetter);
-                                printf("#define %s        %c,%c\n\n", netName, portLetter, pinNumber);
+                                printf("#define %s        %c,%s\n\n", netName, portLetter, pinNumber);
                             } else if (outputType == PIC_XC) {
                                 // replace the ! symbol in the negated netnames since the c compiler does not allows to use it in a constant name
                                 if (strchr(netName, '!') == 0) {  
@@ -255,8 +255,8 @@ output(filePath, "wt") {
                                 printf("#define %s_LAT   LAT%c\n", netName, portLetter);
                                 printf("#define %s_PORT   PORT%c\n", netName, portLetter);
                                 printf("#define %s_TRISREG TRIS%c\n", netName, portLetter);
-                                printf("#define %s        PORT%cbits.R%c%c\n", netName, portLetter, portLetter, pinNumber);
-                                printf("#define %s_bit    %c\n\n", netName, pinNumber);
+                                printf("#define %s        PORT%cbits.R%c%s\n", netName, portLetter, portLetter, pinNumber);
+                                printf("#define %s_bit    %s\n\n", netName, pinNumber);
                             } 
                         } else { // nRF is simple
                             printf("#define %s   %d\n", netName, strtol(strsub(P.pin.name, 3)));
@@ -285,11 +285,12 @@ output(filePath, "wt") {
                                 }
                             }
                             
-                            pinNumber -= '0'; // the pinNumber below will be used as a bitmask index (0-7)
+                            int pinNumberI = strtol(pinNumber);
+                            pinNumberI -= '0'; // the pinNumberI below will be used as a bitmask index (0-7)
                             if (outputType == PIC_XC && currentPinDirection==DirectionOutput) { 
-                                portDirections[int(portLetter-'A')] &= ~(1<<pinNumber);// at PIC micros output is set to 0
+                                portDirections[int(portLetter-'A')] &= ~(1<<pinNumberI);// at PIC micros output is set to 0
                             } else if (outputType == AVR_libc && currentPinDirection==DirectionOutput) {
-                                portDirections[int(portLetter-'A')] |= (1<<pinNumber);// AVR micros output is set to 1
+                                portDirections[int(portLetter-'A')] |= (1<<pinNumberI);// AVR micros output is set to 1
                             }
                         }
                     }

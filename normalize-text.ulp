@@ -531,10 +531,10 @@ if (board) {
 
     if (text_ratio > 31) {
         text_ratio = 31;
-        dlgMessageBox("!<qt><P><B>Ratio clipped to 31 !</B></P>"+
+        dlgMessageBox("!<qt><P><B>Ratio clipped to 31% !</B></P>"+
                       "<P>Make sure that text thickness is not too large for proper ratio.</P></qt>");
     }
-    
+    printf("RATIO: %d\n", text_ratio);
     ProcessBrdTexts(textSize, text_ratio, selectedFontType);
 
     //  EditBox
