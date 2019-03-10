@@ -3,23 +3,14 @@
             "Assign the 'RUN toggle_brd_sch;' command to a shortcut (I prefer Ctrl+E to get similar behaviour to NI LabVIEW)"
             "<p>"
 			"<p>The latest version can be obtained from the <a href=https://github.com/martonmiklos/ulps_for_eagle>GitHub</a></p>"
-			"<p><author>Author: <a href=mailto:martonmiklosqdev@gmail_dot_com>Miklos Marton </author></a><p>"string ret, fn, extension;
-
+			"<p><author>Author: <a href=mailto:martonmiklosqdev@gmail_dot_com>Miklos Marton </author></a><p>"
+string ret = "";
 if (board) {
-	board(B) {
-		fn = B.name;
-		extension = ".sch";
-	}
+    sprintf(ret, "EDIT .sch");
+    exit(ret);
 } else if (schematic) {
-	schematic(SCH) {
-		fn = SCH.name;
-		extension = ".brd";
-	}
+    sprintf(ret, "EDIT .brd");
+    exit(ret);
 }
 
-if (fn != "") {
-	fn[strlen(fn) - strlen(fileext(fn))] = 0;
-	sprintf(ret, "EDIT %s%s", fn, extension);
-}
-
-exit(ret);
+exit(0);
