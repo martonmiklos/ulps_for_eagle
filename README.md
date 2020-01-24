@@ -19,7 +19,8 @@ This ULP was originally written by Karsten Brandt.
 
 Following features were added by me:
 * Command line argument handling: RUN show_values 100n {top,bottom}
-* Ability to display parts only on top/bottom side
+* Ability to display parts only on top/bottom side in the board editor
+* Ability to display parts only on the current page of the schematic
 
 ![show_values_screenshot](https://raw.githubusercontent.com/martonmiklos/ulps_for_eagle/master/screenshots/show_values.png "show_values.ulp in action")
 
