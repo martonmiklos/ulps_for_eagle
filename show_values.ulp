@@ -11,9 +11,11 @@
 			 "Modifizierte Version von Rene König<br>"
              "<p><author>Autor: Karsten Brandt</author>"
 
-#include "useful-routines.ulp"
-#include "IniFile.ulp"
+string ULP_KEY = "ShowValues";
 
+#include "config_utils.ulp"
+
+             
 enum { ShowTopOnly, ShowBothSides, ShowBottomOnly };
 enum { ShowThisPage, ShowOnAllPages };
 
@@ -32,11 +34,24 @@ string strTexts[] =
     ";Es wurden keine Elemente mit dem Value \"%s\" gefunden.\v"
 };
 
+
 string strMessage;
 string strScript;
-int nCount;
+int foundPartCount;
 int showPartsOnSides = ShowBothSides;
 int showPartsOnPages = ShowOnAllPages;
+
+string get_ulp_name(void) 
+{
+    string s = strsub(argv[0], 0, strlen(argv[0])-4);
+    string p = s;
+    char c = '/';
+    int pos = strrchr(s, c);
+    if (pos >= 0) {
+        p = strsub(s, pos + 1);
+    }
+    return p;
+}
 
 string Translate(string src)
 {
@@ -44,20 +59,10 @@ string Translate(string src)
     return((strLoc != "") ? strLoc : src);
 }
 
-string GetIniFileName(void)
-{
-    return filesetext(argv[0], ".ini");
-}
-
-string GetScriptName(void)
-{
-    return filesetext(argv[0], ".scr");
-}
-
-string InputBoxPCB(string strPrompt, string strTitle, string strDefault)
+string InputBoxPCB(string strPrompt, string strDefault)
 {
     string strReturn = strDefault;
-    int nResult = dlgDialog(strTitle)
+    int nResult = dlgDialog("Show parts with values")
     {
         dlgGridLayout
         {
@@ -92,10 +97,10 @@ string InputBoxPCB(string strPrompt, string strTitle, string strDefault)
     return((nResult > 0) ? strReturn : "");
 }
 
-string InputBoxSCH(string strPrompt, string strTitle, string strDefault)
+string InputBoxSCH(string strPrompt, string strDefault)
 {
     string strReturn = strDefault;
-    int nResult = dlgDialog(strTitle)
+    int nResult = dlgDialog("Show parts with values")
     {
         dlgGridLayout
         {
@@ -129,147 +134,144 @@ string InputBoxSCH(string strPrompt, string strTitle, string strDefault)
     return((nResult > 0) ? strReturn : "");
 }
 
-int partWithValueFound=0;
-
 if (board) board(B)
 {
-    showPartsOnSides = INI_GetInteger(strlwr(get_ulp_name()), B.name + "_side", ShowBothSides, GetIniFileName());
+    showPartsOnSides = cfgget_int("pcb_side", ShowBothSides);
     if (showPartsOnSides > ShowBottomOnly)
         showPartsOnSides = ShowBothSides;
   
     string strValue = "";
     if (argc == 1) {
         // No command line arguments, start the GUI
-        strValue = InputBoxPCB(Translate("Please type in the value you want to highlight."), get_ulp_name(), INI_GetString(strlwr(get_ulp_name()), B.name + "_value", "", GetIniFileName()));
-    } else {
+        strValue = InputBoxPCB(Translate("Please type in the value you want to highlight."), cfgget_string("pcb_value", ""));
+    } else if (argc >= 2){
         // command line arguments are handled in the following way:
         // first argument: part value, 
         // second (optional): side name {top,bottom}
-        if (argc == 2) {
+        strValue = argv[1];
+        showPartsOnSides = ShowBothSides;
+        if (argc == 3) {
             strValue = argv[1];
-        } else if (argc == 3) {
-            strValue = argv[1];
-            showPartsOnSides = ShowBothSides;
             if (strlwr(argv[2]) == "top") {
                 showPartsOnSides = ShowTopOnly;
             } else if (strlwr(argv[2]) == "bottom" || strlwr(argv[2]) == "bot") {
                 showPartsOnSides = ShowBottomOnly;
             }
+        } else if (argc > 3) {
+            sprintf(strMessage, "!Too many arguments passed: %d\n"
+                                "Command line call syntax for running in the board editor:\n"
+                                "RUN show_values.ulp <part_name> [top|bottom]\n"
+                                "The [top|bottom] argument is optional", argc - 1);
+            dlgMessageBox(strMessage);
+            exit(EXIT_FAILURE);
         }
     }
 
     
     if(strValue == "")
         exit(EXIT_SUCCESS);
-
-    INI_PutString(strlwr(get_ulp_name()), B.name + "_value", strValue, GetIniFileName());
-    INI_PutInteger(strlwr(get_ulp_name()), B.name + "_side", showPartsOnSides, GetIniFileName());
-    strScript = GetScriptName();
+    cfgset_string("pcb_value", strValue);
+    cfgset_int("pcb_side", showPartsOnSides);
     
-    output(strScript)
-    {
-        printf("#\n");
-        //printf("window;\n\n");
-
-        B.elements(E) {
-            if (showPartsOnSides != ShowBothSides) {
-                if (showPartsOnSides == ShowTopOnly && E.mirror != 0)
-                    continue;
-                
-                if (showPartsOnSides == ShowBottomOnly && E.mirror == 0)
-                    continue;
-            }
-            
-            if (!E.populate)
+    string command;
+    B.elements(E) {
+        if (showPartsOnSides != ShowBothSides) {
+            if (showPartsOnSides == ShowTopOnly && E.mirror != 0)
                 continue;
             
-            if((strlwr(E.value) == strlwr(strValue)) && (partWithValueFound==0)) {
-                printf("show %s ", E.name);
-                partWithValueFound=1;
-                ++nCount;
-            } else if((strlwr(E.value) == strlwr(strValue)) && (partWithValueFound==1)) {
-                printf(" %s ", E.name);
-                ++nCount;
-            }
+            if (showPartsOnSides == ShowBottomOnly && E.mirror == 0)
+                continue;
         }
         
-        printf("@\nwindow\n\n");
+        if (!E.populate)
+            continue;
+        
+        if((strlwr(E.value) == strlwr(strValue))) {
+            if (foundPartCount == 0) {
+                sprintf(command, "show %s ", E.name);
+            } else {
+                sprintf(command, "%s %s ", command, E.name);
+            }
+            ++foundPartCount;
+        }
     }
 
-    if(!nCount)
-    {
-        sprintf(strMessage, Translate(";No elements found with value \"%s\"."), strValue);
+    if (foundPartCount == 0) {
+        sprintf(strMessage, Translate(";No elements found with value \"%s\""), strValue);
+        if (showPartsOnSides != ShowBothSides)
+            sprintf(strMessage, "%s on layer: %s", strMessage, showPartsOnSides == ShowTopOnly ? "TOP" : "BOTTOM");
         dlgMessageBox(strMessage);
         exit(EXIT_FAILURE);
     }
-    else
-    {
-        exit("script " + "'"+strScript+"'" + ";");
-    }
+    sprintf(command, "%s @", command);
+    exit(command);
 }
 else if(sheet) sheet(currentSheet)
 {
-    string strName;
-
+    string schName;
     schematic(SCH)
     {
-        strName = SCH.name;
+        schName = SCH.name;
     }
     
-    showPartsOnPages = INI_GetInteger(strlwr(get_ulp_name()), strName + "_pages", ShowOnAllPages, GetIniFileName());
-    if (showPartsOnSides > ShowOnAllPages)
-        showPartsOnSides = ShowOnAllPages;
+    string intVal;
+    showPartsOnPages = cfgget_int("sch_pages", ShowOnAllPages);
+    if (showPartsOnPages > ShowOnAllPages)
+        showPartsOnPages = ShowOnAllPages;
 
-    string strValue = InputBoxSCH(Translate("Please type in the value you want to highlight."), get_ulp_name(), INI_GetString(strlwr(get_ulp_name()), strName, "", GetIniFileName()));
+    string strValue;
+    if (argc == 1) {
+        // No command line arguments, start the GUI
+        strValue = InputBoxSCH(Translate("Please type in the value you want to highlight."),  cfgget_string("sch_value", ""));
+    } else if (argc == 2){
+        // command line arguments are handled in the following way:
+        // first argument: part value, 
+        strValue = argv[1];
+    } else {
+        sprintf(strMessage, "!Too many arguments passed: %d\n"
+                            "Command line call syntax for running in the schematic editor:\n"
+                            "RUN show_values.ulp <part_name>\n", argc - 1);
+        dlgMessageBox(strMessage);
+        exit(EXIT_FAILURE);
+    }
+    
 
     if (strValue == "")
         exit(EXIT_SUCCESS);
 
-    INI_PutString(strlwr(get_ulp_name()), strName, strValue, GetIniFileName());
-    INI_PutInteger(strlwr(get_ulp_name()), strName + "_pages", showPartsOnPages, GetIniFileName());
-    strScript = GetScriptName();
+    cfgset_string("sch_value", strValue);
+    cfgset_int("sch_pages", showPartsOnPages);
 
-    output(strScript)
-    {
-        printf("#\n");
-        //printf("window;\n\n");
-        if (showPartsOnPages == ShowOnAllPages) {
-            schematic(SCH) {
-                SCH.sheets(S) {
-                    S.parts(P) {
-                        if ((strlwr(P.value) == strlwr(strValue))) {
-                            if (partWithValueFound==0) {
-                                printf("show %s ", P.name);
-                                partWithValueFound=1;
-                            } else {
-                                printf(" %s ", P.name);
-                            }
-                            ++nCount;
+    string command;
+    if (showPartsOnPages == ShowOnAllPages) {
+        schematic(SCH) {
+            SCH.sheets(S) {
+                S.parts(P) {
+                    if ((strlwr(P.value) == strlwr(strValue))) {
+                        if (foundPartCount == 0) {
+                            sprintf(command, "show %s ", P.name);
+                        } else {
+                            sprintf(command, "%s %s ", command, P.name);
                         }
+                        ++foundPartCount;
                     }
-                }
-            }
-        } else {
-            currentSheet.parts(P) {
-                if ((strlwr(P.value) == strlwr(strValue))) {
-                    if (partWithValueFound==0) {
-                        printf("show %s ", P.name);
-                        partWithValueFound=1;
-                    } else {
-                        printf(" %s ", P.name);
-                    }
-                    ++nCount;
                 }
             }
         }
-
-        //printf("\n;\n");
-        if (nCount)
-            printf(" @");
-        printf("\nwindow\n\n");
+    } else {
+        currentSheet.parts(P) {
+            if ((strlwr(P.value) == strlwr(strValue))) {
+                if (foundPartCount == 0) {
+                    sprintf(command, "show %s ", P.name);
+                } else {
+                    sprintf(command, "%s %s ", command, P.name);
+                }
+                ++foundPartCount;
+            }
+        }
     }
 
-    if (!nCount) {
+    if (foundPartCount == 0) {
         if (showPartsOnPages == ShowOnAllPages) {
             sprintf(strMessage, Translate(";No elements found with value \"%s\"."), strValue);
         } else if  (showPartsOnPages == ShowThisPage) {
@@ -278,12 +280,10 @@ else if(sheet) sheet(currentSheet)
         dlgMessageBox(strMessage);
         exit(EXIT_FAILURE);
     }
-    else
-    {
-        exit("script " + "'"+strScript+"'" + ";");
-    }
+    sprintf(command, "%s @", command);
+    exit(command);
 }
 else
 {
-    dlgMessageBox(Translate(";This ULP requires a board or a schematic."));
+    dlgMessageBox(Translate(";This ULP can only run from the a board or a schematic."));
 }
