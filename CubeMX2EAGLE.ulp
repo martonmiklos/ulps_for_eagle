@@ -23,7 +23,6 @@
 
 string ULP_KEY = "CubeMX2EAGLE";
 #include "IniFile.ulp"
-#include "useful-routines.ulp"
 #include "config_utils.ulp"
 
 /**
@@ -41,11 +40,6 @@ string str_replace(string search, string replace, string subject) {
         lastpos = pos + strlen(replace);
     }
     return subject;
-}
-
-string GetIniFileName(void)
-{
-    return filesetext(argv[0], ".ini");
 }
 
 string ret = "";
