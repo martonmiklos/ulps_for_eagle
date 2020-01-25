@@ -33,25 +33,24 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 
-#include "useful-routines.ulp"
-#include "IniFile.ulp"
+string ULP_KEY = "normalize_rcl_values";
 
-string GetIniFileName(void)
-{
-    return filesetext(argv[0], ".ini");
-}
+#include "config_utils.ulp"
 
 string Version = "1.04";
 
 string fileName;
 
-int fScriptExec = INI_GetInteger(strlwr(get_ulp_name()), "fScriptExec", 0, GetIniFileName()); // execute script automatically after generating
+enum { NameStyle_US, NameStyle_EURO };
+
+
+int fScriptExec = cfgget_int("fScriptExec", 0); // execute script automatically after generating
 
 int fModeR = 1;         // normalize resistors if non-zero
 int fModeC = 1;         // normalize capacitors if non-zero
 int fModeL = 1;         // normalize inductors if non-zero
 int fUCase = 0;         // force all other parts values to uppercase
-int fStyle = INI_GetInteger(strlwr(get_ulp_name()), "fStyle", 0, GetIniFileName());;         // 0=US, 1=Euro style
+int fStyle = cfgget_int("fStyle", NameStyle_EURO);         // 0=US, 1=Euro style
 
 int fTrimC = 0;         // 1= truncate 'pF' or 'nF' styles to 'p' or 'n'
 int fTrimL = 0;         // 1= truncate 'nH' or 'uH' styles to 'n' or 'u'
@@ -60,9 +59,9 @@ int fDefValR = 1;       // if true, set empty value R parts to default value
 int fDefValC = 1;       // if true, set empty value C parts to default value
 int fDefValL = 1;       // if true, set empty value L parts to default value
 
-string strDefValueR = INI_GetString(strlwr(get_ulp_name()), "strDefValueR", "(TBD)", GetIniFileName());
-string strDefValueC = INI_GetString(strlwr(get_ulp_name()), "strDefValueC", "(TBD)", GetIniFileName());
-string strDefValueL = INI_GetString(strlwr(get_ulp_name()), "strDefValueL", "(TBD)", GetIniFileName());
+string strDefValueR = cfgget_string("strDefValueR", "(TBD)");
+string strDefValueC = cfgget_string("strDefValueC", "(TBD)");
+string strDefValueL = cfgget_string("strDefValueL", "(TBD)");
 
 //////////////////////////////////////////////////////////////////////////////
 // Normalize RESISTOR ('R' prefix) value field
@@ -145,7 +144,7 @@ int normalizeRValue(UL_PART part)
 
         if (alldigits)
         {
-            if (fStyle)
+            if (fStyle == NameStyle_EURO)
             {
                 flag = 0;
 
@@ -187,7 +186,7 @@ int normalizeRValue(UL_PART part)
 
             flag = 0;
 
-            if (fStyle)
+            if (fStyle == NameStyle_EURO)
             {
                 // EU STYLE: normlize to '1K00' format
 
@@ -855,11 +854,11 @@ if (schematic)
             printf("EDIT .s1\n");
         }
 
-        INI_PutInteger(strlwr(get_ulp_name()), "fStyle", fStyle, GetIniFileName());
-        INI_PutInteger(strlwr(get_ulp_name()), "fScriptExec", fScriptExec, GetIniFileName());
-        INI_PutString(strlwr(get_ulp_name()), "strDefValueR", strDefValueR, GetIniFileName());
-        INI_PutString(strlwr(get_ulp_name()), "strDefValueC", strDefValueR, GetIniFileName());
-        INI_PutString(strlwr(get_ulp_name()), "strDefValueL", strDefValueR, GetIniFileName());
+        cfgset_int("fStyle", fStyle);
+        cfgset_int("fScriptExec", fScriptExec);
+        cfgset_string("strDefValueR", strDefValueR);
+        cfgset_string("strDefValueC", strDefValueR);
+        cfgset_string("strDefValueL", strDefValueR);
         
         if (fScriptExec)
             exit ("SCRIPT '" + fileName + "';");
