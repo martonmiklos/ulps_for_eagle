@@ -42,6 +42,32 @@ string str_replace(string search, string replace, string subject) {
     return subject;
 }
 
+string generateNetAddCommand(UL_PIN pin, string netName)
+{
+    string command = "";
+    real pinX = u2inch(pin.x);
+    real pinY = u2inch(pin.y);
+    switch (int(pin.angle)) {
+    case 0:
+        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netName, pinX, pinY, pinX - 0.1, pinY);
+        sprintf(command, "%sLABEL XREF R180 (%finch %finch) (%finch %finch);\n", command, pinX - 0.1, pinY, pinX - 0.1, pinY);
+        break;
+    case 270:
+        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netName, pinX, pinY, pinX, pinY + 0.1);
+        sprintf(command, "%sLABEL XREF R90 (%finch %finch) (%finch %finch);\n", command, pinX, pinY + 0.1, pinX, pinY + 0.1);
+        break;
+    case 180:
+        sprintf(command, "NET %s (%finch %finch) (%finch %finch);\n", netName, pinX, pinY, pinX + 0.1, pinY);
+        sprintf(command, "%sLABEL XREF R0 (%finch %finch) (%finch %finch);\n", command, pinX + 0.1, pinY, pinX + 0.1, pinY);
+        break;
+    case 90:
+        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netName, pinX, pinY, pinX, pinY - 0.1);
+        sprintf(command, "%sLABEL XREF R270 (%finch %finch) (%finch %finch);\n", command, pinX, pinY - 0.1, pinX, pinY - 0.1);
+        break;
+    }
+    return command;
+}
+
 string ret = "";
 string partNames[];
 string iocFilePath = cfgget_string("iocFilePath", EAGLE_HOME);
@@ -101,6 +127,7 @@ if (argc < 4) {
     iocFilePath = argv[2];
 }
 
+output("/tmp/foo.txt", "wt") {
 string MCUName = INI_GetString("", "Mcu.Name", "", iocFilePath);
 string pinsXML = "";
 string pinXMLTags[];
@@ -121,7 +148,9 @@ string pinNumberStr = INI_GetString("", "Mcu.PinsNb", "0", iocFilePath);
 if (pinNumberStr != "0") {
     string netNames[];
     string pinNumbers[];
+    string pinNames[];
     int pinCount = strtol(pinNumberStr);
+    // do a loop on all the Mcu.Pin23=PA11 type entries of the IOC file
     for (int pinIndex = 0; pinIndex<pinCount; pinIndex++) {
         string keyName;
         sprintf(keyName,  "Mcu.Pin%d", pinIndex);
@@ -129,30 +158,44 @@ if (pinNumberStr != "0") {
         if (pinName != "") {
             string keyName;
             sprintf(keyName,  "%s.GPIOParameters", pinName);
+            string netName = "";
             if (INI_GetString("", keyName, "", iocFilePath) == "GPIO_Label") {
                 sprintf(keyName,  "%s.GPIO_Label", pinName);
-                string netName = INI_GetString("", keyName, "", iocFilePath);
-                
+                netName = INI_GetString("", keyName, "", iocFilePath);
+            } else {
+                // GPIO_Label is not set (pin special function is used like PA8.Signal=GPXTI8)
+                sprintf(keyName,  "%s.Signal", pinName);
+                netName = INI_GetString("", keyName, "", iocFilePath);
+            }
+            
+            if (netName == "") {
+            } else {
+                int found = 0;
                 string pinNumber = "";
                 for (int i = 0; i<XMLPinCount; i++) {
                     string pinIndexStr = "";
                     if (pinName == xmlattribute(pinXMLTags[i], "Pin", "Name")) {
                         pinNumber = xmlattribute(pinXMLTags[i], "Pin", "Position");
+                        found = 1;
                         break;
                     }
                 }
-                netNames[pinIndex] = netName;
-                pinNumbers[pinIndex] = pinNumber;
+                
+                if (found) {
+                    netNames[pinIndex] = netName;
+                    pinNumbers[pinIndex] = pinNumber;
+                    pinNames[pinIndex] = pinName;
+                }
             }
         }
     }
     
     schematic(SCH) {
         SCH.parts(PART) {
-            output("/tmp/foo.txt", "wt") {
             //UL_SYMBOL symbol = PART.instances()[0].xrefs()[0].symbol();
             //printf("SYMBOL %d %d", PART.instances()[0].xrefs()[0].symbol().x(), PART.instances()[0].xrefs()[0].symbol().y());
             if (PART.name == mcuRefDes) {
+                printf("Part found\n");
                 PART.instances(instance) {
                     instance.gate.symbol.pins(pin) {
                         int contactCount = 0;
@@ -165,30 +208,10 @@ if (pinNumberStr != "0") {
                         // A single pin could be appended to multiple pads.
                         // we are not looking for appended pads
                         if (contactCount == 1) {
+                            printf("PAD: %s\n", padName);
                             for (int pinIndex = 0; pinIndex<pinCount; pinIndex++) {
-                                if (pinNumbers[pinIndex] == padName) {
-                                    string command = "";
-                                    real pinX = u2inch(pin.x);
-                                    real pinY = u2inch(pin.y);
-                                    switch (int(pin.angle)) {
-                                    case 0:
-                                        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netNames[pinIndex], pinX, pinY, pinX - 0.1, pinY);
-                                        sprintf(command, "%sLABEL XREF R180 (%finch %finch) (%finch %finch);\n", command, pinX - 0.1, pinY, pinX - 0.1, pinY);
-                                        break;
-                                    case 270:
-                                        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netNames[pinIndex], pinX, pinY, pinX, pinY + 0.1);
-                                        sprintf(command, "%sLABEL XREF R90 (%finch %finch) (%finch %finch);\n", command, pinX, pinY + 0.1, pinX, pinY + 0.1);
-                                        break;
-                                    case 180:
-                                        sprintf(command, "NET %s (%finch %finch) (%finch %finch);\n", netNames[pinIndex], pinX, pinY, pinX + 0.1, pinY);
-                                        sprintf(command, "%sLABEL XREF R0 (%finch %finch) (%finch %finch);\n", command, pinX + 0.1, pinY, pinX + 0.1, pinY);
-                                        break;
-                                    case 90:
-                                        sprintf(command, "net %s (%finch %finch) (%finch %finch);", netNames[pinIndex], pinX, pinY, pinX, pinY - 0.1);
-                                        sprintf(command, "%sLABEL XREF R270 (%finch %finch) (%finch %finch);\n", command, pinX, pinY - 0.1, pinX, pinY - 0.1);
-                                        break;
-                                    }
-                                    sprintf(ret, "%s%s", ret, command);
+                                if (pinNumbers[pinIndex] == padName || pinNames[pinIndex] == padName || pinNames[pinIndex] == pin.name) {
+                                    sprintf(ret, "%s%s", ret, generateNetAddCommand(pin, netNames[pinIndex]));
                                     break;
                                 }
                             }
@@ -200,7 +223,6 @@ if (pinNumberStr != "0") {
                 break;
             } // if (PART.name == mcuRefDes)
         } // SCH.parts
-        }
     } // SCH
 } else {
     dlgMessageBox("Unable to find Mcu.PinsNb in the ioc file!\nMaybe it is malformed?");
@@ -211,4 +233,5 @@ cfgset_string("iocFilePath", iocFilePath);
 cfgset_string("mcuRefDes", mcuRefDes);
 cfgset_string("cubeMXPath", cubeMXPath);
 
+}
 exit(ret);
