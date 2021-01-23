@@ -37,9 +37,10 @@ string strTexts[] =
 
 string strMessage;
 string strScript;
-int foundPartCount;
+int foundPartCount = 0;
 int showPartsOnSides = ShowBothSides;
 int showPartsOnPages = ShowOnAllPages;
+string command;
 
 string get_ulp_name(void) 
 {
@@ -134,6 +135,45 @@ string InputBoxSCH(string strPrompt, string strDefault)
     return((nResult > 0) ? strReturn : "");
 }
 
+string strreplace(string original, string toReplace, string replaceWith)
+{
+    string ret = "";
+    string left = original;
+    while (strstr(left, toReplace) >= 0) {
+        ret += strsub(left, 0, strstr(left, toReplace));
+        ret += replaceWith;
+        left = strsub(left, strstr(left, toReplace) + strlen(toReplace));
+    }
+    ret += left;
+    return ret;
+}
+
+
+void addFoundPart(string partName) 
+{
+    if (foundPartCount == 0) {
+        sprintf(command, "show %s ", partName);
+    } else {
+        sprintf(command, "%s %s ", command, partName);
+    }
+    foundPartCount++;
+}
+
+void checkPartName(string value, string partName, string searchString)
+{
+    int useRegexp = ((strchr(searchString, '*') != -1) | (strchr(searchString, '?') != -1)) ? 1 : 0;
+    if (useRegexp) {
+        searchString = strreplace(searchString, "*", "([a-zA-Z0-9]*)");
+        searchString = strreplace(searchString, "?", "([a-zA-Z0-9]{1})");
+        int matchPos = strxstr(value, searchString);
+        if (matchPos != -1)
+            addFoundPart(partName);
+    } else {
+        if ((strlwr(value) == strlwr(searchString)))
+            addFoundPart(partName);
+    }
+}
+
 if (board) board(B)
 {
     showPartsOnSides = cfgget_int("pcb_side", ShowBothSides);
@@ -173,7 +213,6 @@ if (board) board(B)
     cfgset_string("pcb_value", strValue);
     cfgset_int("pcb_side", showPartsOnSides);
     
-    string command;
     B.elements(E) {
         if (showPartsOnSides != ShowBothSides) {
             if (showPartsOnSides == ShowTopOnly && E.mirror != 0)
@@ -186,14 +225,7 @@ if (board) board(B)
         if (!E.populate)
             continue;
         
-        if((strlwr(E.value) == strlwr(strValue))) {
-            if (foundPartCount == 0) {
-                sprintf(command, "show %s ", E.name);
-            } else {
-                sprintf(command, "%s %s ", command, E.name);
-            }
-            ++foundPartCount;
-        }
+        checkPartName(E.value, E.name, strValue);
     }
 
     if (foundPartCount == 0) {
@@ -242,32 +274,17 @@ else if(sheet) sheet(currentSheet)
     cfgset_string("sch_value", strValue);
     cfgset_int("sch_pages", showPartsOnPages);
 
-    string command;
     if (showPartsOnPages == ShowOnAllPages) {
         schematic(SCH) {
             SCH.sheets(S) {
                 S.parts(P) {
-                    if ((strlwr(P.value) == strlwr(strValue))) {
-                        if (foundPartCount == 0) {
-                            sprintf(command, "show %s ", P.name);
-                        } else {
-                            sprintf(command, "%s %s ", command, P.name);
-                        }
-                        ++foundPartCount;
-                    }
+                    checkPartName(P.value, P.name, strValue);
                 }
             }
         }
     } else {
         currentSheet.parts(P) {
-            if ((strlwr(P.value) == strlwr(strValue))) {
-                if (foundPartCount == 0) {
-                    sprintf(command, "show %s ", P.name);
-                } else {
-                    sprintf(command, "%s %s ", command, P.name);
-                }
-                ++foundPartCount;
-            }
+            checkPartName(P.value, P.name, strValue);
         }
     }
 
