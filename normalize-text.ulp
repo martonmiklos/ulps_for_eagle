@@ -202,11 +202,11 @@ void ProcessText(UL_TEXT T, real size, int ratio, int action)
     if (layerEnabled(T.layer)) {
         switch (textSizeUnit) {
         case UNIT_MIL:
-            sprintf(str,"CHANGE SIZE %.4f (%.4f %.4f);\nCHANGE RATIO %d (%.4f %.4f);\n",
+            sprintf(str,"CHANGE SIZE %.4fmil (%.4fmil %.4fmil);\nCHANGE RATIO %d (%.4fmil %.4fmil);\n",
                     size, u2mil(T.x), u2mil(T.y), ratio, u2mil(T.x), u2mil(T.y));
             break;
         case UNIT_MM:
-            sprintf(str,"CHANGE SIZE %.4f (%.4f %.4f);\nCHANGE RATIO %d (%.4f %.4f);\n",
+            sprintf(str,"CHANGE SIZE %.4fmm (%.4fmm %.4fmm);\nCHANGE RATIO %d (%.4fmm %.4fmm);\n",
                     size, u2mm(T.x), u2mm(T.y), ratio, u2mm(T.x), u2mm(T.y));
             break;
         }
@@ -228,11 +228,11 @@ void ProcessText(UL_TEXT T, real size, int ratio, int action)
         }
         switch (textSizeUnit) {
             case UNIT_MIL:
-                sprintf(str,"CHANGE FONT %s (%.4f %.4f);\n",
+                sprintf(str,"CHANGE FONT %s (%.4fmil %.4fmil);\n",
                         font, u2mil(T.x), u2mil(T.y));
                 break;
             case UNIT_MM:
-                sprintf(str,"CHANGE FONT %s (%.4f %.4f);\n",
+                sprintf(str,"CHANGE FONT %s (%.4fmm %.4fmm);\n",
                         font, u2mm(T.x), u2mm(T.y));
                 break;
         }
@@ -307,7 +307,7 @@ void ProcessSchTexts(real size, int ratio, int fontType)
     
     schematic(SCH) {
         SCH.sheets(S) {
-            sprintf(cmd, "EDIT .s%d;\n", S.number);
+            sprintf(cmd, "%s\nEDIT .s%d;\n", cmd, S.number);
             cmd += str;
             cmd += "WINDOW FIT;\n";
             S.instances(E) {
