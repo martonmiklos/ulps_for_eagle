@@ -357,7 +357,7 @@ void ProcessSchTexts(real size, int ratio, int fontType)
     cmd += "SET UNDO_LOG ON;\n";
 }
 
-output("/tmp/foo.txt", "wt") {
+//output("/tmp/foo.txt", "wt") {
 /* ------------- MAIN ROUTINE --------------- */
 if (board) {
     int visibleLayers[];
@@ -727,4 +727,4 @@ if (board) {
     dlgMessageBox(":You must run this ULP in a schematic or in a board !");
     exit(1);
 }
-}
+//}
