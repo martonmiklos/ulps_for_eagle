@@ -140,9 +140,9 @@ string Static_ExtractSectionName(string strHeader)
 
 string INI_GetString(string SectionName, string KeyName, string strDefault, string IniFileName)
 {
-    if(!Static_FileExists(IniFileName)) {
+    /*if(!Static_FileExists(IniFileName)) {
         return strDefault;
-    }
+    }*/
 
     string strLine[];
     int nLines, nLine, nPos;
