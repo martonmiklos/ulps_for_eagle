@@ -127,7 +127,6 @@ if (argc < 4) {
     iocFilePath = argv[2];
 }
 
-output("/tmp/foo.txt", "wt") {
 string MCUName = INI_GetString("", "Mcu.Name", "", iocFilePath);
 string pinsXML = "";
 string pinXMLTags[];
@@ -195,7 +194,6 @@ if (pinNumberStr != "0") {
             //UL_SYMBOL symbol = PART.instances()[0].xrefs()[0].symbol();
             //printf("SYMBOL %d %d", PART.instances()[0].xrefs()[0].symbol().x(), PART.instances()[0].xrefs()[0].symbol().y());
             if (PART.name == mcuRefDes) {
-                printf("Part found\n");
                 PART.instances(instance) {
                     instance.gate.symbol.pins(pin) {
                         int contactCount = 0;
@@ -208,7 +206,6 @@ if (pinNumberStr != "0") {
                         // A single pin could be appended to multiple pads.
                         // we are not looking for appended pads
                         if (contactCount == 1) {
-                            printf("PAD: %s\n", padName);
                             for (int pinIndex = 0; pinIndex<pinCount; pinIndex++) {
                                 if (pinNumbers[pinIndex] == padName || pinNames[pinIndex] == padName || pinNames[pinIndex] == pin.name) {
                                     sprintf(ret, "%s%s", ret, generateNetAddCommand(pin, netNames[pinIndex]));
@@ -233,5 +230,4 @@ cfgset_string("iocFilePath", iocFilePath);
 cfgset_string("mcuRefDes", mcuRefDes);
 cfgset_string("cubeMXPath", cubeMXPath);
 
-}
 exit(ret);
