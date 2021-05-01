@@ -100,7 +100,6 @@ void saveSchConfig()
 
 void saveBrdConfig()
 {
-    printf("saveBrdConfig %d\n", textSizeUnit);
     cfgset_real("textSize", textSize);
     cfgset_int("textSizeUnit", textSizeUnit);
     
@@ -450,7 +449,6 @@ if (board) {
                         dlgCell(1,1) dlgRealEdit(textThickness, 0, 500.0);
                         dlgCell(1,2) dlgComboBox(textThicknessUnitOptions, textThicknessUnit) {
                             if (lastTextThicknessUnit != textThicknessUnit) {
-                                printf("%d -> %d\n", lastTextThicknessUnit, textThicknessUnit);
                                 switch (lastTextThicknessUnit) {
                                 case UNIT_MIL:
                                     textThicknessInU = mil2u(textThickness);
@@ -469,7 +467,6 @@ if (board) {
                                     }
                                     break;
                                 }
-                                printf("%d\n", textThicknessInU);
                                 
                                 switch (textThicknessUnit) {
                                 case UNIT_MIL:
@@ -534,7 +531,6 @@ if (board) {
         dlgMessageBox("!<qt><P><B>Ratio clipped to 31% !</B></P>"+
                       "<P>Make sure that text thickness is not too large for proper ratio.</P></qt>");
     }
-    printf("RATIO: %d\n", text_ratio);
     ProcessBrdTexts(textSize, text_ratio, selectedFontType);
 
     //  EditBox
@@ -629,7 +625,6 @@ if (board) {
                         dlgCell(1,1) dlgRealEdit(textThickness,0.0, 500.0);
                         dlgCell(1,2) dlgComboBox(textThicknessUnitOptions, textThicknessUnit) {
                             if (lastTextThicknessUnit != textThicknessUnit) {
-                                printf("%d -> %d\n", lastTextThicknessUnit, textThicknessUnit);
                                 switch (lastTextThicknessUnit) {
                                 case UNIT_MIL:
                                     textThicknessInU = mil2u(textThickness);
@@ -648,7 +643,6 @@ if (board) {
                                     }
                                     break;
                                 }
-                                printf("%d\n", textThicknessInU);
                                 
                                 switch (textThicknessUnit) {
                                 case UNIT_MIL:
